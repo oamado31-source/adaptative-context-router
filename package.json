@@ -1,0 +1,28 @@
+{
+  "name": "@acr/adaptative-context-router",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adaptive context-engineering orchestrator for Claude Code.",
+  "type": "module",
+  "bin": {
+    "acr": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
