@@ -41,7 +41,9 @@ export async function probeBinary(binary: string): Promise<BinaryProbeResult> {
       windowsHide: true,
     });
     const version = firstNonEmptyLine(`${stdout}\n${stderr}`);
-    return { available: true, version };
+    return version
+      ? { available: true, version }
+      : { available: true };
   } catch (error) {
     const code =
       typeof error === 'object' && error !== null && 'code' in error
@@ -118,7 +120,7 @@ async function detectCapability(
         id: definition.id,
         name: definition.name,
         status: 'available',
-        version: probe.version,
+        ...(probe.version ? { version: probe.version } : {}),
         reason: `Detected executable: ${binary}`,
         metadata: {
           detectionMethod: 'binary',
