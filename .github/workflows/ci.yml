@@ -56,3 +56,17 @@ jobs:
           grep -q '"status": "planned"' /tmp/acr-plan.txt
           node dist/cli/index.js plan --json --context-ratio 0.11 --available serena,rtk,pxpipe "Change the button color." | tee /tmp/acr-plan-no-opt.txt
           grep -q '"status": "no-optimization"' /tmp/acr-plan-no-opt.txt
+
+      - name: CLI telemetry smoke test
+        run: |
+          rm -rf .acr
+          node dist/cli/index.js plan --record --context-ratio 0.61 --available serena "Find where authenticateUser is defined." | tee /tmp/acr-telemetry-plan.txt
+          test -f .acr/telemetry/events.jsonl
+          grep -q "telemetry-run:" /tmp/acr-telemetry-plan.txt
+          if grep -Fq "Find where authenticateUser is defined." .acr/telemetry/events.jsonl; then
+            echo "raw task leaked into telemetry" >&2
+            exit 1
+          fi
+          node dist/cli/index.js telemetry summary --json | tee /tmp/acr-telemetry-summary.txt
+          grep -q '"totalRuns": 1' /tmp/acr-telemetry-summary.txt
+          grep -q '"serena": 1' /tmp/acr-telemetry-summary.txt
