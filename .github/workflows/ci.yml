@@ -48,3 +48,11 @@ jobs:
           grep -q "selected: serena" /tmp/acr-route.txt
           node dist/cli/index.js route --context-ratio 0.11 --available serena,rtk,pxpipe "Change the button color." | tee /tmp/acr-no-opt.txt
           grep -q "selected: NO_OPTIMIZATION" /tmp/acr-no-opt.txt
+
+      - name: CLI adapter planning smoke test
+        run: |
+          node dist/cli/index.js plan --json --context-ratio 0.61 --available serena "Find where authenticateUser is defined." | tee /tmp/acr-plan.txt
+          grep -q '"adapterId": "serena"' /tmp/acr-plan.txt
+          grep -q '"status": "planned"' /tmp/acr-plan.txt
+          node dist/cli/index.js plan --json --context-ratio 0.11 --available serena,rtk,pxpipe "Change the button color." | tee /tmp/acr-plan-no-opt.txt
+          grep -q '"status": "no-optimization"' /tmp/acr-plan-no-opt.txt
