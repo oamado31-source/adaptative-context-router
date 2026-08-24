@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { join } from 'node:path';
+
 import { capabilityResolverFromSnapshot } from '../adapters/default-adapters.js';
 import { AdapterRegistry } from '../adapters/registry.js';
 import { ACR_VERSION, createBootstrapStatus } from '../core/bootstrap-status.js';
@@ -17,9 +19,18 @@ import {
 } from '../core/pipeline-executor.js';
 import { PolicyEngine } from '../core/policy-engine.js';
 import { classifyTask } from '../core/task-classifier.js';
+import {
+  summarizeTelemetry,
+  TelemetryRecorder,
+} from '../telemetry/recorder.js';
+import { JsonlTelemetryStore } from '../telemetry/store.js';
+
+function defaultTelemetryPath(): string {
+  return join(process.cwd(), '.acr', 'telemetry', 'events.jsonl');
+}
 
 function printHelp(): void {
-  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr plan [--json] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify Classify task type, precision requirement and optimization risk\n  route    Evaluate routing policy and select/reject optimization strategies\n  plan     Convert a routing decision into safe typed adapter execution plans\n  doctor   Detect Claude Code and supported optimization capabilities\n  status   Show ACR bootstrap/runtime status\n  version  Print the ACR version`);
+  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr telemetry summary [--json] [--path <file>]\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify  Classify task type, precision requirement and optimization risk\n  route     Evaluate routing policy and select/reject optimization strategies\n  plan      Convert a routing decision into safe typed adapter execution plans\n  telemetry Summarize local privacy-safe telemetry\n  doctor    Detect Claude Code and supported optimization capabilities\n  status    Show ACR bootstrap/runtime status\n  version   Print the ACR version`);
 }
 
 function statusGlyph(capability: Capability): string {
@@ -70,6 +81,7 @@ function printClassification(task: string): void {
 
 interface RouteArguments {
   json: boolean;
+  recordTelemetry: boolean;
   task: string;
   context: ContextSnapshot;
   availableOverride?: readonly string[];
@@ -89,6 +101,7 @@ function parseRouteArguments(
   command: 'route' | 'plan' = 'route',
 ): RouteArguments {
   let json = false;
+  let recordTelemetry = false;
   let contextRatio: number | undefined;
   let contextTokens: number | undefined;
   let windowTokens: number | undefined;
@@ -103,6 +116,9 @@ function parseRouteArguments(
     switch (arg) {
       case '--json':
         json = true;
+        break;
+      case '--record':
+        recordTelemetry = true;
         break;
       case '--context-ratio': {
         contextRatio = parseNumber(args[index + 1], '--context-ratio');
@@ -166,6 +182,7 @@ function parseRouteArguments(
 
   return {
     json,
+    recordTelemetry,
     task,
     context: {
       estimatedTokens: effectiveEstimated,
@@ -205,6 +222,26 @@ async function evaluateRoute(route: RouteArguments) {
   });
 
   return { classification, capabilities, decision };
+}
+
+async function recordRouteTelemetry(
+  route: RouteArguments,
+  classification: ReturnType<typeof classifyTask>,
+  capabilities: readonly Capability[],
+  decision: RoutingDecision,
+  pipeline?: PipelineExecutionResult,
+): Promise<string | undefined> {
+  if (!route.recordTelemetry) return undefined;
+
+  const store = new JsonlTelemetryStore(defaultTelemetryPath());
+  const recorder = new TelemetryRecorder(store, 'acr-cli');
+  return recorder.recordRun({
+    task: route.task,
+    classification,
+    capabilities,
+    decision,
+    ...(pipeline ? { pipeline } : {}),
+  });
 }
 
 function printRoute(task: string, decision: RoutingDecision): void {
@@ -267,6 +304,51 @@ function printAdapterPlan(result: PipelineExecutionResult): void {
   }
 }
 
+function printTelemetrySummary(summary: ReturnType<typeof summarizeTelemetry>): void {
+  console.log('ACR telemetry summary\n');
+  console.log(`runs: ${summary.totalRuns}`);
+  console.log(`events: ${summary.totalEvents}`);
+  console.log(`measured-runs: ${summary.measuredRuns}`);
+  console.log(`no-optimization: ${summary.noOptimizationRuns}`);
+  console.log(`measured-input-tokens: ${summary.measuredInputTokens}`);
+  console.log(`measured-output-tokens: ${summary.measuredOutputTokens}`);
+  console.log(`measured-cost-usd: ${summary.measuredCostUsd.toFixed(6)}`);
+
+  const strategies = Object.entries(summary.selectedStrategies);
+  if (strategies.length > 0) {
+    console.log('\nselected-strategies:');
+    for (const [strategy, count] of strategies) {
+      console.log(`- ${strategy}: ${count}`);
+    }
+  }
+}
+
+function parseTelemetrySummaryArguments(args: readonly string[]): {
+  json: boolean;
+  path: string;
+} {
+  let json = false;
+  let path = defaultTelemetryPath();
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--json') {
+      json = true;
+      continue;
+    }
+    if (arg === '--path') {
+      const raw = args[index + 1];
+      if (!raw) throw new Error('--path requires a file path.');
+      path = raw;
+      index += 1;
+      continue;
+    }
+    throw new Error(`Unknown telemetry option: ${arg ?? ''}`);
+  }
+
+  return { json, path };
+}
+
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
 
@@ -291,6 +373,12 @@ async function main(argv: readonly string[]): Promise<void> {
     case 'route': {
       const route = parseRouteArguments(args, 'route');
       const { classification, capabilities, decision } = await evaluateRoute(route);
+      const telemetryRunId = await recordRouteTelemetry(
+        route,
+        classification,
+        capabilities,
+        decision,
+      );
 
       if (route.json) {
         console.log(
@@ -300,6 +388,7 @@ async function main(argv: readonly string[]): Promise<void> {
               evidence: classification.evidence,
               capabilities,
               decision,
+              ...(telemetryRunId ? { telemetryRunId } : {}),
             },
             null,
             2,
@@ -307,6 +396,9 @@ async function main(argv: readonly string[]): Promise<void> {
         );
       } else {
         printRoute(route.task, decision);
+        if (telemetryRunId) {
+          console.log(`\ntelemetry-run: ${telemetryRunId}`);
+        }
       }
       return;
     }
@@ -317,6 +409,13 @@ async function main(argv: readonly string[]): Promise<void> {
         capabilityResolverFromSnapshot(capabilities),
       );
       const pipeline = await new PipelineExecutor(adapterRegistry).execute(decision);
+      const telemetryRunId = await recordRouteTelemetry(
+        route,
+        classification,
+        capabilities,
+        decision,
+        pipeline,
+      );
 
       if (route.json) {
         console.log(
@@ -327,6 +426,7 @@ async function main(argv: readonly string[]): Promise<void> {
               capabilities,
               decision,
               pipeline,
+              ...(telemetryRunId ? { telemetryRunId } : {}),
             },
             null,
             2,
@@ -335,6 +435,26 @@ async function main(argv: readonly string[]): Promise<void> {
       } else {
         printRoute(route.task, decision);
         printAdapterPlan(pipeline);
+        if (telemetryRunId) {
+          console.log(`\ntelemetry-run: ${telemetryRunId}`);
+        }
+      }
+      return;
+    }
+    case 'telemetry': {
+      const [subcommand = 'summary', ...telemetryArgs] = args;
+      if (subcommand !== 'summary') {
+        throw new Error('Usage: acr telemetry summary [--json] [--path <file>]');
+      }
+      const telemetry = parseTelemetrySummaryArguments(telemetryArgs);
+      const store = new JsonlTelemetryStore(telemetry.path);
+      const summary = summarizeTelemetry(await store.list());
+
+      if (telemetry.json) {
+        console.log(JSON.stringify({ path: telemetry.path, summary }, null, 2));
+      } else {
+        printTelemetrySummary(summary);
+        console.log(`\npath: ${telemetry.path}`);
       }
       return;
     }
