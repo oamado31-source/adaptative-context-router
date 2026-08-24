@@ -78,14 +78,14 @@ describe('real benchmark corpus', () => {
     const traversal = validCorpus();
     const traversalCases = traversal.cases as Array<Record<string, unknown>>;
     traversalCases[0] = {
-      ...traversalCases[0],
+      ...traversalCases[0]!,
       targetPaths: ['../private.txt'],
     };
     expect(() => parseBenchmarkCorpus(traversal)).toThrow(/without traversal/u);
 
     const duplicate = validCorpus();
     const duplicateCases = duplicate.cases as Array<Record<string, unknown>>;
-    duplicateCases.push({ ...duplicateCases[0] });
+    duplicateCases.push({ ...duplicateCases[0]! });
     expect(() => parseBenchmarkCorpus(duplicate)).toThrow(/unique case IDs/u);
   });
 
@@ -104,7 +104,7 @@ describe('real benchmark corpus', () => {
     const unknownCapability = validCorpus();
     const capabilityCases = unknownCapability.cases as Array<Record<string, unknown>>;
     capabilityCases[0] = {
-      ...capabilityCases[0],
+      ...capabilityCases[0]!,
       requiredCapabilities: ['invented-optimizer'],
     };
     expect(() => parseBenchmarkCorpus(unknownCapability)).toThrow(
@@ -114,7 +114,7 @@ describe('real benchmark corpus', () => {
     const invalidContext = validCorpus();
     const contextCases = invalidContext.cases as Array<Record<string, unknown>>;
     contextCases[0] = {
-      ...contextCases[0],
+      ...contextCases[0]!,
       routingContextRatio: 1.1,
     };
     expect(() => parseBenchmarkCorpus(invalidContext)).toThrow(/between 0 and 1/u);
@@ -150,7 +150,11 @@ describe('real benchmark corpus', () => {
     expect(summary.coverageNotes).toHaveLength(3);
     expect(summary.taskTypes.large_logs).toBeUndefined();
     expect(summary.taskTypes.large_structured_data).toBeUndefined();
-    expect(corpus.cases.every((item) => item.routingContextRatio >= 0 && item.routingContextRatio <= 1)).toBe(true);
+    expect(
+      corpus.cases.every(
+        (item) => item.routingContextRatio >= 0 && item.routingContextRatio <= 1,
+      ),
+    ).toBe(true);
   });
 
   it('parses the explicit corpus validation CLI without adding execution behavior', () => {
@@ -165,8 +169,8 @@ describe('real benchmark corpus', () => {
       json: true,
     });
     expect(() => parseBenchmarkCorpusCliArguments([])).toThrow(/Usage:/u);
-    expect(() =>
-      parseBenchmarkCorpusCliArguments(['--execute']),
-    ).toThrow(/Unknown benchmark corpus option/u);
+    expect(() => parseBenchmarkCorpusCliArguments(['--execute'])).toThrow(
+      /Unknown benchmark corpus option/u,
+    );
   });
 });
