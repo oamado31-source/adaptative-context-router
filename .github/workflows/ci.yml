@@ -170,6 +170,18 @@ jobs:
           node dist/cli/index.js benchmark compare --json --file /tmp/acr-benchmark.json | tee /tmp/acr-benchmark-json.txt
           grep -q '"measured": true' /tmp/acr-benchmark-json.txt
 
+      - name: CLI real benchmark corpus smoke test
+        run: |
+          node dist/cli/router.js benchmark corpus validate --file benchmarks/corpus/real-v1.json --json | tee /tmp/acr-real-corpus.txt
+          grep -q '"valid": true' /tmp/acr-real-corpus.txt
+          grep -q '"execution": false' /tmp/acr-real-corpus.txt
+          grep -q '"evidenceMode": "real"' /tmp/acr-real-corpus.txt
+          grep -q '"totalCases": 6' /tmp/acr-real-corpus.txt
+          grep -q '"revision": "7fb35b8a8777cc39b986ec4661e21b66875b1623"' /tmp/acr-real-corpus.txt
+          node dist/cli/router.js benchmark corpus help | tee /tmp/acr-real-corpus-help.txt
+          grep -q "does not run Claude Code" /tmp/acr-real-corpus-help.txt
+          grep -q "does not.*claim token savings" /tmp/acr-real-corpus-help.txt
+
       - name: CLI dashboard smoke test
         run: |
           rm -f /tmp/acr-dashboard-demo.html /tmp/acr-dashboard-local.html

@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "id": "acr-real-v1",
+  "evidenceMode": "real",
+  "provider": "claude-code",
+  "target": {
+    "repository": "oamado31-source/adaptative-context-router",
+    "revision": "7fb35b8a8777cc39b986ec4661e21b66875b1623"
+  },
+  "controls": {
+    "repetitionsPerArm": 3,
+    "samePrompt": true,
+    "sameProviderModel": true,
+    "sessionPersistence": false,
+    "order": "alternating",
+    "qualityEvaluation": "blinded-rubric"
+  },
+  "cases": [
+    {
+      "id": "acr-symbol-classifier-profile",
+      "title": "Locate task classification and TaskProfile construction",
+      "taskType": "targeted_code_search",
+      "task": "Locate the implementation that classifies a task into a TaskProfile. Explain which fields it sets and identify the defining symbols and files without describing unrelated modules.",
+      "routingContextRatio": 0.61,
+      "targetPaths": [
+        "src/core/task-classifier.ts",
+        "src/core/contracts.ts"
+      ],
+      "requiredCapabilities": [
+        "serena"
+      ],
+      "expectedStrategy": "serena",
+      "quality": {
+        "minimumScore": 0.95,
+        "assertions": [
+          "Identifies classifyTask as the classification entry point and points to src/core/task-classifier.ts.",
+          "Identifies TaskProfile in src/core/contracts.ts and accurately describes its taskType, precision, risk, confidence and requiresExactIdentifiers fields.",
+          "Does not invent TaskProfile fields or unrelated execution behavior."
+        ]
+      }
+    },
+    {
+      "id": "acr-provider-measurement-flow",
+      "title": "Trace Claude Code provider measurement into telemetry",
+      "taskType": "repository_exploration",
+      "task": "Trace the end-to-end path by which a Claude Code structured JSON result becomes an ACR telemetry measurement. Explain the privacy and cost-provenance boundaries and identify the main modules involved.",
+      "routingContextRatio": 0.61,
+      "targetPaths": [
+        "src/measurement/claude-code-json.ts",
+        "src/measurement/contracts.ts",
+        "src/cli/measurement.ts",
+        "src/telemetry/recorder.ts",
+        "src/telemetry/store.ts"
+      ],
+      "requiredCapabilities": [
+        "serena"
+      ],
+      "expectedStrategy": "serena",
+      "quality": {
+        "minimumScore": 0.95,
+        "assertions": [
+          "Explains the structured-result parser, CLI import step and telemetry recording path in the correct order.",
+          "States that raw result content is not persisted and raw session_id is replaced by a SHA-256 fingerprint.",
+          "States that Claude Code total_cost_usd is stored as estimatedCostUsd with client-estimate provenance rather than measured billed cost.",
+          "States that imported measurements must be linked to an existing ACR run."
+        ]
+      }
+    },
+    {
+      "id": "acr-exact-release-identity",
+      "title": "Read exact package release identity",
+      "taskType": "exact_data",
+      "task": "Report the exact package version, private flag, Node engine requirement and CLI bin path declared by this repository. Preserve the values exactly as written and do not infer missing metadata.",
+      "routingContextRatio": 0.2,
+      "targetPaths": [
+        "package.json"
+      ],
+      "requiredCapabilities": [],
+      "expectedStrategy": "NO_OPTIMIZATION",
+      "quality": {
+        "minimumScore": 1,
+        "assertions": [
+          "Reports version 0.1.0 exactly.",
+          "Reports private as true exactly.",
+          "Reports the Node engine requirement exactly as declared in package.json.",
+          "Reports the acr bin path exactly as declared in package.json."
+        ]
+      },
+      "notes": "Exact-data control case: lossy compression must not be required to answer it."
+    },
+    {
+      "id": "acr-semantic-architecture-synthesis",
+      "title": "Synthesize architecture, development and release boundaries",
+      "taskType": "semantic_long_context",
+      "task": "Using the repository documentation, synthesize how ACR separates routing decisions, adapter execution, telemetry evidence and release safety. Include the project thesis, the role of NO_OPTIMIZATION and the distinction between routing estimates and measured benchmark evidence.",
+      "routingContextRatio": 0.65,
+      "targetPaths": [
+        "README.md",
+        "CHANGELOG.md",
+        "THIRD_PARTY_NOTICES.md",
+        "docs/ARCHITECTURE.md",
+        "docs/DEVELOPMENT.md",
+        "docs/RELEASE.md"
+      ],
+      "requiredCapabilities": [
+        "pxpipe"
+      ],
+      "expectedStrategy": "pxpipe",
+      "quality": {
+        "minimumScore": 0.9,
+        "assertions": [
+          "Preserves the thesis that optimization is contextual and NO_OPTIMIZATION is a valid first-class decision.",
+          "Separates policy/routing from typed adapter planning and explicit external execution.",
+          "Separates estimated routing savings from measured benchmark evidence.",
+          "Mentions relevant safety boundaries such as no silent third-party installation and privacy-safe telemetry."
+        ]
+      },
+      "notes": "Semantic long-context case over durable repository documentation; no synthetic document expansion is used."
+    },
+    {
+      "id": "acr-no-opt-low-overhead",
+      "title": "Explain when optimization overhead is unjustified",
+      "taskType": "general_reasoning",
+      "task": "Explain, from the policy implementation and architecture, why ACR can deliberately choose NO_OPTIMIZATION for a low-context task even when optimization capabilities are available. Describe the guardrails that prevent unnecessary optimization.",
+      "routingContextRatio": 0.1,
+      "targetPaths": [
+        "src/core/policy-config.ts",
+        "src/core/policy-engine.ts",
+        "docs/ARCHITECTURE.md"
+      ],
+      "requiredCapabilities": [],
+      "expectedStrategy": "NO_OPTIMIZATION",
+      "quality": {
+        "minimumScore": 0.95,
+        "assertions": [
+          "Explains that optimization must justify saving against risk, latency and overhead rather than being applied universally.",
+          "Explains that low context utilization and minimum-utility thresholds can produce NO_OPTIMIZATION.",
+          "Describes negative routing or precision/risk blocking without claiming unavailable empirical savings."
+        ]
+      }
+    },
+    {
+      "id": "acr-debug-quality-gate",
+      "title": "Diagnose a benchmark quality-gate regression",
+      "taskType": "debugging",
+      "task": "Debug the following conceptual failure: an ACR benchmark run reduces total tokens but is classified as quality-regression. Trace the decision conditions in the benchmark harness and explain which quality or success-rate checks can override token savings.",
+      "routingContextRatio": 0.55,
+      "targetPaths": [
+        "src/benchmark/contracts.ts",
+        "src/benchmark/harness.ts",
+        "src/benchmark/io.ts"
+      ],
+      "requiredCapabilities": [
+        "token-optimizer"
+      ],
+      "expectedStrategy": "token-optimizer",
+      "quality": {
+        "minimumScore": 0.95,
+        "assertions": [
+          "Identifies the quality tolerance comparison between ACR and baseline quality scores.",
+          "Identifies success-rate preservation as part of the quality gate.",
+          "Explains that a failed quality gate yields quality-regression before token savings can justify acr-better.",
+          "Does not treat incomplete cost data as comparable measured cost."
+        ]
+      }
+    }
+  ],
+  "coverageNotes": [
+    "large_logs is intentionally omitted from real-v1 because the repository does not yet contain a durable versioned real log corpus; ephemeral CI logs are not used as evidence inputs.",
+    "large_structured_data is intentionally omitted from real-v1 until a durable real structured dataset can be pinned without introducing private or synthetic evidence.",
+    "The manifest defines experimental cases and validity controls only; it does not itself execute Claude Code or prove ACR savings."
+  ]
+}
