@@ -97,8 +97,9 @@ class PlannedOptimizationAdapter implements OptimizationAdapter {
 
   async estimate(
     task: TaskProfile,
-    _context: ContextSnapshot,
+    context: ContextSnapshot,
   ): Promise<OptimizationEstimate> {
+    void context;
     const supported = this.#spec.taskTypes.includes(task.taskType);
     const forbidden = this.#spec.forbiddenPrecisions.includes(task.precision);
 
