@@ -3,9 +3,10 @@
 import { ACR_VERSION, createBootstrapStatus } from '../core/bootstrap-status.js';
 import { CapabilityRegistry } from '../core/capability-registry.js';
 import type { Capability } from '../core/contracts.js';
+import { classifyTask } from '../core/task-classifier.js';
 
 function printHelp(): void {
-  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  doctor   Detect Claude Code and supported optimization capabilities\n  status   Show ACR bootstrap/runtime status\n  version  Print the ACR version`);
+  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify Classify task type, precision requirement and optimization risk\n  doctor   Detect Claude Code and supported optimization capabilities\n  status   Show ACR bootstrap/runtime status\n  version  Print the ACR version`);
 }
 
 function statusGlyph(capability: Capability): string {
@@ -37,10 +38,44 @@ function printDoctor(capabilities: readonly Capability[]): void {
   console.log(`\n${available}/${capabilities.length} capabilities detected.`);
 }
 
+function printClassification(task: string): void {
+  const result = classifyTask(task);
+  const { profile } = result;
+
+  console.log('ACR classify\n');
+  console.log(`task-type: ${profile.taskType}`);
+  console.log(`precision: ${profile.precision}`);
+  console.log(`risk: ${profile.risk}`);
+  console.log(`confidence: ${profile.confidence.toFixed(2)}`);
+  console.log(`exact-identifiers: ${profile.requiresExactIdentifiers ? 'yes' : 'no'}`);
+  console.log(`expected-output: ${profile.expectedOutputSize ?? 'unknown'}`);
+  console.log('\nevidence:');
+  for (const item of result.evidence) {
+    console.log(`- ${item}`);
+  }
+}
+
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
 
   switch (command) {
+    case 'classify': {
+      const json = args.includes('--json');
+      const task = args.filter((arg) => arg !== '--json').join(' ').trim();
+      if (!task) {
+        console.error('Usage: acr classify [--json] <task>');
+        process.exitCode = 1;
+        return;
+      }
+
+      const result = classifyTask(task);
+      if (json) {
+        console.log(JSON.stringify({ task, ...result }, null, 2));
+      } else {
+        printClassification(task);
+      }
+      return;
+    }
     case 'doctor': {
       const capabilities = await new CapabilityRegistry().discover();
       if (args.includes('--json')) {
