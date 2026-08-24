@@ -13,5 +13,8 @@ export * from './core/policy-engine.js';
 export * from './core/task-classifier.js';
 export * from './dashboard/model.js';
 export * from './dashboard/render.js';
+export * from './executors/process-runner.js';
+export * from './executors/rtk-bridge.js';
+export * from './executors/serena-mcp-bridge.js';
 export * from './telemetry/recorder.js';
 export * from './telemetry/store.js';
