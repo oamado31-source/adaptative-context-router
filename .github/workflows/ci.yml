@@ -182,6 +182,54 @@ jobs:
           grep -q "does not run Claude Code" /tmp/acr-real-corpus-help.txt
           grep -q "does not.*claim token savings" /tmp/acr-real-corpus-help.txt
 
+      - name: CLI evidence-driven calibration smoke test
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          function observation(arm, inputTokens) {
+            return {
+              arm,
+              source: 'measured',
+              inputTokens,
+              outputTokens: 0,
+              cacheReadTokens: 0,
+              cacheWriteTokens: 0,
+              latencyMs: arm === 'baseline' ? 1000 : 900,
+              success: true,
+              qualityScore: 0.96,
+            };
+          }
+          function fixture(id, acrInput) {
+            return {
+              case: {
+                id,
+                taskType: 'targeted_code_search',
+                strategy: 'serena',
+                qualityTolerance: 0.02,
+                notes: 'Synthetic CI calibration fixture only; not project evidence.',
+              },
+              baseline: Array.from({ length: 3 }, () => observation('baseline', 1000)),
+              acr: Array.from({ length: 3 }, () => observation('acr', acrInput)),
+            };
+          }
+          fs.writeFileSync('/tmp/acr-cal-a.json', JSON.stringify(fixture('ci-cal-a', 800), null, 2));
+          fs.writeFileSync('/tmp/acr-cal-b.json', JSON.stringify(fixture('ci-cal-b', 700), null, 2));
+          NODE
+          node dist/cli/router.js calibrate analyze --file /tmp/acr-cal-a.json --file /tmp/acr-cal-b.json --json | tee /tmp/acr-calibration.txt
+          grep -q '"measured": true' /tmp/acr-calibration.txt
+          grep -q '"policyMutation": false' /tmp/acr-calibration.txt
+          grep -q '"strategyId": "serena"' /tmp/acr-calibration.txt
+          grep -q '"disposition": "promote"' /tmp/acr-calibration.txt
+          grep -q '"evidenceCases": 2' /tmp/acr-calibration.txt
+          node dist/cli/router.js calibrate help | tee /tmp/acr-calibration-help.txt
+          grep -q "Accepts measured benchmark inputs only" /tmp/acr-calibration-help.txt
+          grep -q "does not modify policies/default.yaml" /tmp/acr-calibration-help.txt
+          if node dist/cli/router.js calibrate analyze --file /tmp/acr-cal-a.json --apply >/tmp/acr-cal-apply.txt 2>&1; then
+            echo "automatic calibration mutation unexpectedly succeeded" >&2
+            exit 1
+          fi
+          grep -qi "advisory only" /tmp/acr-cal-apply.txt
+
       - name: CLI dashboard smoke test
         run: |
           rm -f /tmp/acr-dashboard-demo.html /tmp/acr-dashboard-local.html
