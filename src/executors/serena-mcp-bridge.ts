@@ -119,7 +119,7 @@ export class SerenaMcpBridge implements AdapterExecutor {
     this.#projectPath = options.projectPath;
     this.#command = options.command ?? 'serena';
     this.#commandPrefixArgs = options.commandPrefixArgs ?? [];
-    this.#context = options.context ?? 'ide-assistant';
+    this.#context = options.context ?? 'claude-code';
     this.#sessionFactory = options.sessionFactory ?? createSdkSerenaSession;
   }
 
