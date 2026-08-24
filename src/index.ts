@@ -11,5 +11,7 @@ export * from './core/pipeline-executor.js';
 export * from './core/policy-config.js';
 export * from './core/policy-engine.js';
 export * from './core/task-classifier.js';
+export * from './dashboard/model.js';
+export * from './dashboard/render.js';
 export * from './telemetry/recorder.js';
 export * from './telemetry/store.js';

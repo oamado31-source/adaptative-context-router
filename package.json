@@ -5,7 +5,7 @@
   "description": "Adaptive context-engineering orchestrator for Claude Code.",
   "type": "module",
   "bin": {
-    "acr": "dist/cli/index.js"
+    "acr": "dist/cli/router.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
