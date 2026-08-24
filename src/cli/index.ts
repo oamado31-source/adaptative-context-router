@@ -89,6 +89,8 @@ function parseRouteArguments(args: readonly string[]): RouteArguments {
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
+    if (arg === undefined) continue;
+
     switch (arg) {
       case '--json':
         json = true;
