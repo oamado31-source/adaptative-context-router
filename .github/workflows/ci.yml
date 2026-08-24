@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'feature/**'
+      - 'release/**'
   pull_request:
     branches:
       - main
@@ -45,12 +46,12 @@ jobs:
       - name: Release identity smoke test
         run: |
           node dist/cli/router.js version | tee /tmp/acr-version.txt
-          grep -qx "0.1.0" /tmp/acr-version.txt
+          grep -qx "0.2.0" /tmp/acr-version.txt
           node dist/cli/router.js status --json | tee /tmp/acr-status.txt
-          grep -q '"version": "0.1.0"' /tmp/acr-status.txt
-          grep -q '"milestone": "M8"' /tmp/acr-status.txt
+          grep -q '"version": "0.2.0"' /tmp/acr-status.txt
+          grep -q '"milestone": "M13"' /tmp/acr-status.txt
           grep -q '"mode": "guarded"' /tmp/acr-status.txt
-          grep -q '"status": "mvp-ready"' /tmp/acr-status.txt
+          grep -q '"status": "adaptive-ready"' /tmp/acr-status.txt
 
       - name: CLI routing smoke test
         run: |
