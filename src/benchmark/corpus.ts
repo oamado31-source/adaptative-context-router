@@ -32,6 +32,7 @@ export interface BenchmarkCorpusCase {
   title: string;
   taskType: TaskType;
   task: string;
+  routingContextRatio: number;
   targetPaths: readonly string[];
   requiredCapabilities: readonly string[];
   expectedStrategy: string;
@@ -213,6 +214,16 @@ function parseCase(value: unknown, index: number): BenchmarkCorpusCase {
     throw new Error(`${prefix}.taskType is invalid.`);
   }
 
+  const routingContextRatio = record.routingContextRatio;
+  if (
+    typeof routingContextRatio !== 'number' ||
+    !Number.isFinite(routingContextRatio) ||
+    routingContextRatio < 0 ||
+    routingContextRatio > 1
+  ) {
+    throw new Error(`${prefix}.routingContextRatio must be between 0 and 1.`);
+  }
+
   const targetPaths = requireUniqueStrings(record.targetPaths, `${prefix}.targetPaths`)
     .map((item, pathIndex) =>
       parseTargetPath(item, `${prefix}.targetPaths[${pathIndex}]`),
@@ -234,6 +245,7 @@ function parseCase(value: unknown, index: number): BenchmarkCorpusCase {
     title: requireString(record.title, `${prefix}.title`),
     taskType: taskType as TaskType,
     task: requireString(record.task, `${prefix}.task`),
+    routingContextRatio,
     targetPaths,
     requiredCapabilities,
     expectedStrategy: requireString(record.expectedStrategy, `${prefix}.expectedStrategy`),
