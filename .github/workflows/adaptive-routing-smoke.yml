@@ -1,0 +1,213 @@
+name: Adaptive Routing Smoke
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  adaptive-routing:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Focused adaptive tests
+        run: npm test -- --run tests/adaptive-routing.test.ts tests/adaptive-cli.test.ts
+
+      - name: Compiled adaptive profile and routing smoke
+        run: |
+          set -euo pipefail
+
+          POLICY_BEFORE="$(sha256sum policies/default.yaml | awk '{print $1}')"
+
+          cat > /tmp/acr-m13-tune-calibration.json <<'JSON'
+          {
+            "measured": true,
+            "policyMutation": false,
+            "comparisons": [],
+            "recommendations": [
+              {
+                "strategyId": "serena",
+                "disposition": "promote",
+                "evidenceCases": 2,
+                "baselineSamples": 6,
+                "acrSamples": 6,
+                "qualityFailures": 0,
+                "meanTotalTokenReductionRatio": 0.25,
+                "meanLatencyReductionRatio": 0.10,
+                "currentEstimatedSavingRatio": 0.62,
+                "proposedEstimatedSavingRatio": 0.25,
+                "policyMutation": false,
+                "rationale": ["SYNTHETIC M13 CI TUNE FIXTURE — NOT REAL SAVINGS EVIDENCE"]
+              }
+            ],
+            "skippedCases": [],
+            "thresholds": {
+              "minimumCasesPerStrategy": 2,
+              "minimumSamplesPerArmPerCase": 3,
+              "minimumPromoteTokenReductionRatio": 0.05,
+              "maximumEstimatedSavingRatio": 0.9
+            }
+          }
+          JSON
+
+          if node dist/cli/router.js adaptive profile create \
+            --calibration /tmp/acr-m13-tune-calibration.json \
+            --id ci-tune-profile \
+            --output /tmp/acr-m13-tune-profile.json \
+            > /tmp/acr-m13-no-approve.txt 2>&1; then
+            echo "adaptive profile creation succeeded without explicit approval" >&2
+            exit 1
+          fi
+          grep -q "explicit --approve" /tmp/acr-m13-no-approve.txt
+          test ! -f /tmp/acr-m13-tune-profile.json
+
+          node dist/cli/router.js adaptive profile create \
+            --calibration /tmp/acr-m13-tune-calibration.json \
+            --id ci-tune-profile \
+            --output /tmp/acr-m13-tune-profile.json \
+            --approve \
+            --json | tee /tmp/acr-m13-create.txt
+          grep -q '"profileId": "ci-tune-profile"' /tmp/acr-m13-create.txt
+          grep -q '"approved": true' /tmp/acr-m13-create.txt
+          grep -Eq '"fingerprint": "[0-9a-f]{64}"' /tmp/acr-m13-create.txt
+
+          node dist/cli/router.js adaptive profile inspect \
+            --file /tmp/acr-m13-tune-profile.json \
+            --json | tee /tmp/acr-m13-inspect.txt
+          grep -q '"tunedStrategies"' /tmp/acr-m13-inspect.txt
+          grep -q '"serena"' /tmp/acr-m13-inspect.txt
+
+          node dist/cli/router.js route \
+            --json \
+            --adaptive-profile /tmp/acr-m13-tune-profile.json \
+            --context-ratio 0.61 \
+            --available serena,jcodemunch \
+            "Find where authenticateUser is defined." \
+            | tee /tmp/acr-m13-route.txt
+          grep -q '"profileId": "ci-tune-profile"' /tmp/acr-m13-route.txt
+          grep -q '"tunedStrategies"' /tmp/acr-m13-route.txt
+          grep -q '"serena"' /tmp/acr-m13-route.txt
+
+          node dist/cli/router.js plan \
+            --json \
+            --adaptive-profile /tmp/acr-m13-tune-profile.json \
+            --context-ratio 0.61 \
+            --available serena,jcodemunch \
+            "Find where authenticateUser is defined." \
+            | tee /tmp/acr-m13-plan.txt
+          grep -q '"profileId": "ci-tune-profile"' /tmp/acr-m13-plan.txt
+          grep -q '"pipeline"' /tmp/acr-m13-plan.txt
+
+          cat > /tmp/acr-m13-block-calibration.json <<'JSON'
+          {
+            "measured": true,
+            "policyMutation": false,
+            "comparisons": [],
+            "recommendations": [
+              {
+                "strategyId": "serena",
+                "disposition": "demote",
+                "evidenceCases": 2,
+                "baselineSamples": 6,
+                "acrSamples": 6,
+                "qualityFailures": 1,
+                "meanTotalTokenReductionRatio": 0.45,
+                "meanLatencyReductionRatio": 0.10,
+                "currentEstimatedSavingRatio": 0.62,
+                "proposedEstimatedSavingRatio": 0.45,
+                "policyMutation": false,
+                "rationale": ["SYNTHETIC M13 CI QUALITY-FAILURE FIXTURE — NOT REAL EVIDENCE"]
+              }
+            ],
+            "skippedCases": [],
+            "thresholds": {
+              "minimumCasesPerStrategy": 2,
+              "minimumSamplesPerArmPerCase": 3,
+              "minimumPromoteTokenReductionRatio": 0.05,
+              "maximumEstimatedSavingRatio": 0.9
+            }
+          }
+          JSON
+
+          node dist/cli/router.js adaptive profile create \
+            --calibration /tmp/acr-m13-block-calibration.json \
+            --id ci-block-profile \
+            --output /tmp/acr-m13-block-profile.json \
+            --approve \
+            --json | tee /tmp/acr-m13-block-create.txt
+          grep -q '"blockedStrategies"' /tmp/acr-m13-block-create.txt
+          grep -q '"serena"' /tmp/acr-m13-block-create.txt
+
+          node dist/cli/router.js route \
+            --json \
+            --adaptive-profile /tmp/acr-m13-block-profile.json \
+            --context-ratio 0.61 \
+            --available serena \
+            "Find where authenticateUser is defined." \
+            | tee /tmp/acr-m13-block-route.txt
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/acr-m13-block-route.txt', 'utf8'));
+          if (result.decision?.selected?.id === 'serena') {
+            throw new Error('quality-blocked Serena was still selected');
+          }
+          const rejectedSerena = result.decision?.rejected?.find((item) => item.id === 'serena');
+          if (!rejectedSerena || rejectedSerena.blocked !== true) {
+            throw new Error('Serena was not retained as an explicitly blocked candidate');
+          }
+          if (!result.decision?.adaptive?.blockedStrategies?.includes('serena')) {
+            throw new Error('adaptive provenance did not record Serena as blocked');
+          }
+          console.log(`blocked-strategy: OK; safe fallback: ${result.decision?.selected?.id ?? 'NO_OPTIMIZATION'}`);
+          NODE
+
+          rm -rf .acr
+          node dist/cli/router.js route \
+            --record \
+            --adaptive-profile /tmp/acr-m13-tune-profile.json \
+            --context-ratio 0.61 \
+            --available serena,jcodemunch \
+            "Find where authenticateUser is defined." \
+            | tee /tmp/acr-m13-record.txt
+          test -f .acr/telemetry/events.jsonl
+          grep -q '"profileId":"ci-tune-profile"' .acr/telemetry/events.jsonl
+          grep -Eq '"profileFingerprint":"[0-9a-f]{64}"' .acr/telemetry/events.jsonl
+          if grep -Fq '/tmp/acr-m13-tune-profile.json' .acr/telemetry/events.jsonl; then
+            echo "raw adaptive profile path leaked into telemetry" >&2
+            exit 1
+          fi
+          if grep -Fq 'SYNTHETIC M13 CI TUNE FIXTURE' .acr/telemetry/events.jsonl; then
+            echo "raw adaptive profile rationale leaked into telemetry" >&2
+            exit 1
+          fi
+
+          POLICY_AFTER="$(sha256sum policies/default.yaml | awk '{print $1}')"
+          test "$POLICY_BEFORE" = "$POLICY_AFTER"
+          git diff --exit-code -- policies/default.yaml

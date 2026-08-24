@@ -65,6 +65,14 @@ export interface StrategyCandidate {
   reasons: readonly string[];
 }
 
+export interface AdaptiveRoutingMetadata {
+  profileId: string;
+  profileFingerprint: string;
+  appliedRules: number;
+  tunedStrategies: readonly string[];
+  blockedStrategies: readonly string[];
+}
+
 export interface RoutingDecision {
   task: TaskProfile;
   context: ContextSnapshot;
@@ -72,6 +80,7 @@ export interface RoutingDecision {
   selected: StrategyCandidate | null;
   rejected: readonly StrategyCandidate[];
   rationale: readonly string[];
+  adaptive?: AdaptiveRoutingMetadata;
   createdAt: string;
 }
 

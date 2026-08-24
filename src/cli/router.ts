@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { runAdaptiveCli } from './adaptive.js';
+import { runAdaptiveRouteCli } from './adaptive-route.js';
 import { runBridgeCli } from './bridges.js';
 import { runBenchmarkCorpusCli } from './corpus.js';
 import { runCalibrationCli } from './calibration.js';
@@ -15,8 +17,10 @@ function printHelp(): void {
 
 Usage:
   acr classify [--json] <task>
-  acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>
-  acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>
+  acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] [--adaptive-profile <profile.json>] <task>
+  acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] [--adaptive-profile <profile.json>] <task>
+  acr adaptive profile create --calibration <report.json> --id <profileId> --output <profile.json> --approve [--json]
+  acr adaptive profile inspect --file <profile.json> [--json]
   acr bridge rtk health [--json]
   acr bridge rtk rewrite --command <shell-command> [--json]
   acr bridge serena health [--project <path>] [--json]
@@ -38,6 +42,7 @@ Commands:
   classify    Classify task type, precision requirement and optimization risk
   route       Evaluate routing policy and select/reject optimization strategies
   plan        Convert a routing decision into safe typed adapter execution plans
+  adaptive    Create/inspect explicitly approved measured-evidence routing profiles
   bridge      Explicitly invoke validated real execution bridges; never automatic from plan
   measurement Import provider-reported usage from explicit structured result files
   benchmark   Compare measured observations or validate a real benchmark corpus
@@ -65,6 +70,21 @@ async function runDashboard(
 
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
+
+  if (
+    (command === 'route' || command === 'plan') &&
+    args.includes('--adaptive-profile')
+  ) {
+    const exitCode = await runAdaptiveRouteCli(command, args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'adaptive') {
+    const exitCode = await runAdaptiveCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
 
   if (command === 'bridge') {
     const exitCode = await runBridgeCli(args);

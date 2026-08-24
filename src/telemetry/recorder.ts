@@ -118,6 +118,15 @@ export class TelemetryRecorder {
         estimatedSavingRatio:
           input.decision.selected?.estimatedSavingRatio ?? null,
         utilityScore: input.decision.selected?.utilityScore ?? null,
+        adaptive: input.decision.adaptive
+          ? {
+              profileId: input.decision.adaptive.profileId,
+              profileFingerprint: input.decision.adaptive.profileFingerprint,
+              appliedRules: input.decision.adaptive.appliedRules,
+              tunedStrategies: input.decision.adaptive.tunedStrategies,
+              blockedStrategies: input.decision.adaptive.blockedStrategies,
+            }
+          : null,
         capabilities: input.capabilities.map((capability) => ({
           id: capability.id,
           status: capability.status,

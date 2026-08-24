@@ -37,6 +37,12 @@ function availableCapabilityIds(
   );
 }
 
+function adaptiveBlockedReason(policy: StrategyPolicy): string | undefined {
+  const value = (policy as StrategyPolicy & { adaptiveBlockedReason?: unknown })
+    .adaptiveBlockedReason;
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 function scoreStrategy(
   policy: StrategyPolicy,
   config: PolicyConfig,
@@ -61,6 +67,12 @@ function evaluateStrategy(
 
   const reasons = [...policy.reasons];
   let blocked = false;
+
+  const adaptiveBlock = adaptiveBlockedReason(policy);
+  if (adaptiveBlock) {
+    blocked = true;
+    reasons.push(adaptiveBlock);
+  }
 
   const missingCapabilities = policy.requiredCapabilities.filter(
     (capability) => !capabilityIds.has(capability),
