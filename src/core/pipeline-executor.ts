@@ -65,6 +65,17 @@ export class PipelineExecutor {
         );
         receipts.push(receipt);
 
+        if (receipt.status === 'planned') {
+          return {
+            status: 'planned',
+            receipts,
+            rolledBack: [],
+            detail:
+              receipt.detail ??
+              `Pipeline paused because ${adapterId} requires approval or an external execution bridge.`,
+          };
+        }
+
         if (receipt.status === 'blocked' || receipt.status === 'failed') {
           const rolledBack = await this.#rollbackApplied(receipts, executor);
           return {
@@ -87,14 +98,11 @@ export class PipelineExecutor {
       };
     }
 
-    const hasPlanned = receipts.some((receipt) => receipt.status === 'planned');
     return {
-      status: hasPlanned ? 'planned' : 'applied',
+      status: 'applied',
       receipts,
       rolledBack: [],
-      detail: hasPlanned
-        ? 'Pipeline is valid but requires approval and/or an external execution bridge.'
-        : 'Pipeline applied successfully.',
+      detail: 'Pipeline applied successfully.',
     };
   }
 
