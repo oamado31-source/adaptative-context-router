@@ -16,5 +16,7 @@ export * from './dashboard/render.js';
 export * from './executors/process-runner.js';
 export * from './executors/rtk-bridge.js';
 export * from './executors/serena-mcp-bridge.js';
+export * from './measurement/claude-code-json.js';
+export * from './measurement/contracts.js';
 export * from './telemetry/recorder.js';
 export * from './telemetry/store.js';
