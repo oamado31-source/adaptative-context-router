@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { runBridgeCli } from './bridges.js';
+import { runBenchmarkCorpusCli } from './corpus.js';
 import {
   buildDashboard,
   parseDashboardArguments,
@@ -19,9 +20,10 @@ Usage:
   acr bridge rtk rewrite --command <shell-command> [--json]
   acr bridge serena health [--project <path>] [--json]
   acr bridge serena find-symbol --symbol <name-path> [--project <path>] [--relative-path <path>] [--include-body] [--include-info] [--json]
-  acr bridge serena overview --relative-path <path> [--project <path>] [--json]
+  acr bridge serena overview --relative-path <path> [--project <path>] [--depth <n>] [--json]
   acr measurement import-claude --file <result.json> --run <runId> [--telemetry <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
+  acr benchmark corpus validate --file <corpus.json> [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
   acr demo dashboard [--output <html>] [--json]
@@ -36,7 +38,7 @@ Commands:
   plan        Convert a routing decision into safe typed adapter execution plans
   bridge      Explicitly invoke validated real execution bridges; never automatic from plan
   measurement Import provider-reported usage from explicit structured result files
-  benchmark   Compare measured baseline vs ACR observations with a quality gate
+  benchmark   Compare measured observations or validate a real benchmark corpus
   telemetry   Summarize local privacy-safe telemetry
   dashboard   Build a self-contained dashboard from local telemetry and measured benchmarks
   demo        Generate explicitly labeled synthetic demonstration artifacts
@@ -69,6 +71,12 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (command === 'measurement') {
     const exitCode = await runMeasurementCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'benchmark' && args[0] === 'corpus') {
+    const exitCode = await runBenchmarkCorpusCli(args.slice(1));
     if (exitCode !== 0) process.exitCode = exitCode;
     return;
   }
