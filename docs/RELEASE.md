@@ -78,8 +78,7 @@ Before merge/tag on macOS:
 ```bash
 git switch feature/release-v0.1.0
 git pull --ff-only origin feature/release-v0.1.0
-rm -f package-lock.json
-npm install
+npm install --no-package-lock
 npm run release:check
 node dist/cli/router.js doctor
 node dist/cli/router.js demo dashboard --output /tmp/acr-v0.1.0-demo.html
