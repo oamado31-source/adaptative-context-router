@@ -91,13 +91,12 @@ export const createSdkSerenaSession: SerenaSessionFactory = async (options) => {
     },
     async callTool(name, args) {
       const result = await client.callTool({ name, arguments: args });
+      const structuredContent = asStructuredContent(result.structuredContent);
       return {
         tool: name,
         text: extractText(result.content),
         isError: result.isError === true,
-        ...(result.structuredContent
-          ? { structuredContent: asStructuredContent(result.structuredContent) }
-          : {}),
+        ...(structuredContent ? { structuredContent } : {}),
       };
     },
     async close() {
