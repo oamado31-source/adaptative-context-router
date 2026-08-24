@@ -1,14 +1,14 @@
 import type { OptimizationMode } from './contracts.js';
 
-export const ACR_VERSION = '0.1.0';
-export const ACR_MILESTONE = 'M8';
+export const ACR_VERSION = '0.2.0';
+export const ACR_MILESTONE = 'M13';
 
 export interface BootstrapStatus {
   name: string;
   version: string;
   milestone: string;
   mode: OptimizationMode;
-  status: 'mvp-ready';
+  status: 'mvp-ready' | 'adaptive-ready';
 }
 
 export function createBootstrapStatus(
@@ -19,6 +19,6 @@ export function createBootstrapStatus(
     version: ACR_VERSION,
     milestone: ACR_MILESTONE,
     mode,
-    status: 'mvp-ready',
+    status: 'adaptive-ready',
   };
 }
