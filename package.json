@@ -1,8 +1,22 @@
 {
   "name": "@acr/adaptative-context-router",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Adaptive context-engineering orchestrator for Claude Code.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oamado31-source/adaptative-context-router.git"
+  },
+  "homepage": "https://github.com/oamado31-source/adaptative-context-router",
+  "keywords": [
+    "claude-code",
+    "context-engineering",
+    "token-optimization",
+    "routing",
+    "telemetry",
+    "benchmarking"
+  ],
   "type": "module",
   "bin": {
     "acr": "dist/cli/router.js"
@@ -12,7 +26,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release:check": "npm run typecheck && npm run lint && npm test && npm run build && node dist/cli/router.js version && node dist/cli/router.js status --json"
   },
   "engines": {
     "node": ">=20"
