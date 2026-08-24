@@ -4,6 +4,8 @@ export * from './benchmark/contracts.js';
 export * from './benchmark/corpus.js';
 export * from './benchmark/harness.js';
 export * from './benchmark/io.js';
+export * from './calibration/analyzer.js';
+export * from './calibration/contracts.js';
 export * from './core/bootstrap-status.js';
 export * from './core/capability-definitions.js';
 export * from './core/capability-registry.js';
