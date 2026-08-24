@@ -88,6 +88,77 @@ export interface OptimizationEstimate {
   reasons: readonly string[];
 }
 
+export type AdapterExecutionKind =
+  | 'native-guidance'
+  | 'mcp-invocation'
+  | 'command-rewrite'
+  | 'proxy-route'
+  | 'hook-orchestration';
+
+export interface AdapterAction {
+  id: string;
+  kind: AdapterExecutionKind;
+  summary: string;
+  capabilityId?: string;
+  external: boolean;
+  destructive: boolean;
+  metadata?: Readonly<Record<string, string | number | boolean>>;
+}
+
+export interface AdapterApplyRequest {
+  task: TaskProfile;
+  context: ContextSnapshot;
+  mode: OptimizationMode;
+  strategy?: StrategyCandidate;
+  input?: string;
+}
+
+export interface AdapterPlan {
+  adapterId: string;
+  displayName: string;
+  actions: readonly AdapterAction[];
+  risk: RiskLevel;
+  requiresExternalExecution: boolean;
+  requiresApproval: boolean;
+  reversible: boolean;
+  blocked: boolean;
+  reasons: readonly string[];
+}
+
+export type AdapterExecutionStatus =
+  | 'planned'
+  | 'applied'
+  | 'blocked'
+  | 'failed'
+  | 'rolled-back';
+
+export interface AdapterExecutorResult {
+  success: boolean;
+  detail?: string;
+  rollbackToken?: string;
+  metadata?: Readonly<Record<string, string | number | boolean>>;
+}
+
+export interface AdapterExecutor {
+  execute(
+    plan: AdapterPlan,
+    request: AdapterApplyRequest,
+  ): Promise<AdapterExecutorResult>;
+  rollback?(rollbackToken: string): Promise<void>;
+}
+
+export interface AdapterExecutionReceipt {
+  adapterId: string;
+  status: AdapterExecutionStatus;
+  plan: AdapterPlan;
+  startedAt: string;
+  completedAt: string;
+  externalExecutionAttempted: boolean;
+  detail?: string;
+  rollbackToken?: string;
+  metadata?: Readonly<Record<string, string | number | boolean>>;
+}
+
 export interface OptimizationAdapter {
   readonly id: string;
   readonly displayName: string;
@@ -97,6 +168,15 @@ export interface OptimizationAdapter {
     task: TaskProfile,
     context: ContextSnapshot,
   ): Promise<OptimizationEstimate>;
+  plan(request: AdapterApplyRequest): Promise<AdapterPlan>;
+  apply(
+    request: AdapterApplyRequest,
+    executor?: AdapterExecutor,
+  ): Promise<AdapterExecutionReceipt>;
+  rollback(
+    receipt: AdapterExecutionReceipt,
+    executor?: AdapterExecutor,
+  ): Promise<AdapterExecutionReceipt>;
 }
 
 export interface TelemetryEvent {
