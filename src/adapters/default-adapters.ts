@@ -4,6 +4,7 @@ import type {
   AdapterExecutionReceipt,
   AdapterExecutionKind,
   AdapterExecutor,
+  AdapterHealth,
   AdapterPlan,
   Capability,
   ContextSnapshot,
@@ -85,11 +86,11 @@ class PlannedOptimizationAdapter implements OptimizationAdapter {
     return this.#resolveCapability(this.#spec.capabilityId);
   }
 
-  async health() {
+  async health(): Promise<AdapterHealth> {
     const capability = await this.detect();
     return {
       status: capability.status,
-      detail: capability.reason,
+      ...(capability.reason ? { detail: capability.reason } : {}),
       checkedAt: new Date().toISOString(),
     };
   }
