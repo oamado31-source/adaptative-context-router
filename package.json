@@ -5,10 +5,10 @@
   "description": "Adaptive context-engineering orchestrator for Claude Code.",
   "type": "module",
   "bin": {
-    "acr": "dist/src/cli/index.js"
+    "acr": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
