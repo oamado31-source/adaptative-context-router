@@ -171,9 +171,22 @@ jobs:
             --available serena \
             "Find where authenticateUser is defined." \
             | tee /tmp/acr-m13-block-route.txt
-          grep -q '"selected": null' /tmp/acr-m13-block-route.txt
-          grep -q '"blockedStrategies"' /tmp/acr-m13-block-route.txt
-          grep -q '"serena"' /tmp/acr-m13-block-route.txt
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/acr-m13-block-route.txt', 'utf8'));
+          if (result.decision?.selected?.id === 'serena') {
+            throw new Error('quality-blocked Serena was still selected');
+          }
+          const rejectedSerena = result.decision?.rejected?.find((item) => item.id === 'serena');
+          if (!rejectedSerena || rejectedSerena.blocked !== true) {
+            throw new Error('Serena was not retained as an explicitly blocked candidate');
+          }
+          if (!result.decision?.adaptive?.blockedStrategies?.includes('serena')) {
+            throw new Error('adaptive provenance did not record Serena as blocked');
+          }
+          console.log(`blocked-strategy: OK; safe fallback: ${result.decision?.selected?.id ?? 'NO_OPTIMIZATION'}`);
+          NODE
 
           rm -rf .acr
           node dist/cli/router.js route \
