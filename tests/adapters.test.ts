@@ -59,20 +59,27 @@ function capabilities(...available: string[]): readonly Capability[] {
 }
 
 function decision(
-  adapterId: string | null,
+  adapterIds: string | readonly string[] | null,
   profile: TaskProfile,
   mode: RoutingDecision['mode'] = 'guarded',
 ): RoutingDecision {
+  const adapters =
+    adapterIds === null
+      ? null
+      : typeof adapterIds === 'string'
+        ? [adapterIds]
+        : adapterIds;
+
   return {
     task: profile,
     context,
     mode,
     selected:
-      adapterId === null
+      adapters === null
         ? null
         : {
-            id: adapterId,
-            adapters: [adapterId],
+            id: adapters.join('+'),
+            adapters,
             estimatedSavingRatio: 0.5,
             risk: 'low',
             overheadScore: 0.1,
@@ -218,6 +225,32 @@ describe('PipelineExecutor', () => {
 
     expect(result.status).toBe('planned');
     expect(result.receipts[0]?.adapterId).toBe('serena');
+  });
+
+  it('halts a multi-adapter pipeline when an upstream adapter is only planned', async () => {
+    const registry = AdapterRegistry.createDefault(
+      capabilityResolverFromSnapshot(capabilities('serena')),
+    );
+    const pipeline = new PipelineExecutor(registry);
+
+    const executor: AdapterExecutor = {
+      execute: vi.fn(async () => ({ success: true })),
+    };
+
+    const result = await pipeline.execute(
+      decision(
+        ['serena', 'native-claude'],
+        task('targeted_code_search', 'structural'),
+        'guarded',
+      ),
+      undefined,
+    );
+
+    expect(result.status).toBe('planned');
+    expect(result.receipts.map((receipt) => receipt.adapterId)).toEqual([
+      'serena',
+    ]);
+    expect(executor.execute).not.toHaveBeenCalled();
   });
 
   it('fails safely if policy references an unknown adapter', async () => {
