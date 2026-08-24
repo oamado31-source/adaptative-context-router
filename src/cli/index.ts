@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { capabilityResolverFromSnapshot } from '../adapters/default-adapters.js';
+import { AdapterRegistry } from '../adapters/registry.js';
 import { ACR_VERSION, createBootstrapStatus } from '../core/bootstrap-status.js';
 import { CAPABILITY_DEFINITIONS } from '../core/capability-definitions.js';
 import { CapabilityRegistry } from '../core/capability-registry.js';
@@ -9,11 +11,15 @@ import type {
   OptimizationMode,
   RoutingDecision,
 } from '../core/contracts.js';
+import {
+  PipelineExecutor,
+  type PipelineExecutionResult,
+} from '../core/pipeline-executor.js';
 import { PolicyEngine } from '../core/policy-engine.js';
 import { classifyTask } from '../core/task-classifier.js';
 
 function printHelp(): void {
-  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify Classify task type, precision requirement and optimization risk\n  route    Evaluate routing policy and select/reject optimization strategies\n  doctor   Detect Claude Code and supported optimization capabilities\n  status   Show ACR bootstrap/runtime status\n  version  Print the ACR version`);
+  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr plan [--json] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify Classify task type, precision requirement and optimization risk\n  route    Evaluate routing policy and select/reject optimization strategies\n  plan     Convert a routing decision into safe typed adapter execution plans\n  doctor   Detect Claude Code and supported optimization capabilities\n  status   Show ACR bootstrap/runtime status\n  version  Print the ACR version`);
 }
 
 function statusGlyph(capability: Capability): string {
@@ -78,7 +84,10 @@ function parseNumber(value: string | undefined, flag: string): number {
   return parsed;
 }
 
-function parseRouteArguments(args: readonly string[]): RouteArguments {
+function parseRouteArguments(
+  args: readonly string[],
+  command: 'route' | 'plan' = 'route',
+): RouteArguments {
   let json = false;
   let contextRatio: number | undefined;
   let contextTokens: number | undefined;
@@ -152,7 +161,7 @@ function parseRouteArguments(args: readonly string[]): RouteArguments {
 
   const task = taskParts.join(' ').trim();
   if (!task) {
-    throw new Error('Usage: acr route [options] <task>');
+    throw new Error(`Usage: acr ${command} [options] <task>`);
   }
 
   return {
@@ -180,6 +189,22 @@ function overrideCapabilities(availableIds: readonly string[]): readonly Capabil
     status: requested.has(definition.id) ? 'available' : 'unavailable',
     reason: 'CLI capability override for deterministic routing evaluation.',
   }));
+}
+
+async function evaluateRoute(route: RouteArguments) {
+  const classification = classifyTask(route.task);
+  const capabilities = route.availableOverride
+    ? overrideCapabilities(route.availableOverride)
+    : await new CapabilityRegistry().discover();
+  const engine = await PolicyEngine.createDefault();
+  const decision = engine.evaluate({
+    task: classification.profile,
+    context: route.context,
+    capabilities,
+    mode: route.mode,
+  });
+
+  return { classification, capabilities, decision };
 }
 
 function printRoute(task: string, decision: RoutingDecision): void {
@@ -218,6 +243,30 @@ function printRoute(task: string, decision: RoutingDecision): void {
   }
 }
 
+function printAdapterPlan(result: PipelineExecutionResult): void {
+  console.log('\nadapter-plan:');
+  console.log(`pipeline-status: ${result.status}`);
+  console.log(`detail: ${result.detail}`);
+
+  if (result.receipts.length === 0) {
+    console.log('receipts: none');
+    return;
+  }
+
+  console.log('receipts:');
+  for (const receipt of result.receipts) {
+    console.log(`- ${receipt.adapterId}: ${receipt.status}`);
+    console.log(`  risk: ${receipt.plan.risk}`);
+    console.log(`  approval-required: ${receipt.plan.requiresApproval ? 'yes' : 'no'}`);
+    console.log(
+      `  external-execution: ${receipt.plan.requiresExternalExecution ? 'yes' : 'no'}`,
+    );
+    for (const action of receipt.plan.actions) {
+      console.log(`  action: ${action.kind} — ${action.summary}`);
+    }
+  }
+}
+
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
 
@@ -240,18 +289,8 @@ async function main(argv: readonly string[]): Promise<void> {
       return;
     }
     case 'route': {
-      const route = parseRouteArguments(args);
-      const classification = classifyTask(route.task);
-      const capabilities = route.availableOverride
-        ? overrideCapabilities(route.availableOverride)
-        : await new CapabilityRegistry().discover();
-      const engine = await PolicyEngine.createDefault();
-      const decision = engine.evaluate({
-        task: classification.profile,
-        context: route.context,
-        capabilities,
-        mode: route.mode,
-      });
+      const route = parseRouteArguments(args, 'route');
+      const { classification, capabilities, decision } = await evaluateRoute(route);
 
       if (route.json) {
         console.log(
@@ -268,6 +307,34 @@ async function main(argv: readonly string[]): Promise<void> {
         );
       } else {
         printRoute(route.task, decision);
+      }
+      return;
+    }
+    case 'plan': {
+      const route = parseRouteArguments(args, 'plan');
+      const { classification, capabilities, decision } = await evaluateRoute(route);
+      const adapterRegistry = AdapterRegistry.createDefault(
+        capabilityResolverFromSnapshot(capabilities),
+      );
+      const pipeline = await new PipelineExecutor(adapterRegistry).execute(decision);
+
+      if (route.json) {
+        console.log(
+          JSON.stringify(
+            {
+              task: route.task,
+              evidence: classification.evidence,
+              capabilities,
+              decision,
+              pipeline,
+            },
+            null,
+            2,
+          ),
+        );
+      } else {
+        printRoute(route.task, decision);
+        printAdapterPlan(pipeline);
       }
       return;
     }
