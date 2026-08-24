@@ -42,6 +42,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Release identity smoke test
+        run: |
+          node dist/cli/router.js version | tee /tmp/acr-version.txt
+          grep -qx "0.1.0" /tmp/acr-version.txt
+          node dist/cli/router.js status --json | tee /tmp/acr-status.txt
+          grep -q '"version": "0.1.0"' /tmp/acr-status.txt
+          grep -q '"milestone": "M8"' /tmp/acr-status.txt
+          grep -q '"mode": "guarded"' /tmp/acr-status.txt
+          grep -q '"status": "mvp-ready"' /tmp/acr-status.txt
+
       - name: CLI routing smoke test
         run: |
           node dist/cli/index.js route --context-ratio 0.61 --available serena,jcodemunch "Find where authenticateUser is defined." | tee /tmp/acr-route.txt
