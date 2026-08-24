@@ -24,9 +24,18 @@ export interface TelemetryMeasurementInput {
   cacheReadTokens?: number;
   cacheWriteTokens?: number;
   latencyMs?: number;
+  apiLatencyMs?: number;
   costUsd?: number;
+  estimatedCostUsd?: number;
   success?: boolean;
   qualityScore?: number;
+  provider?: string;
+  measurementSource?: string;
+  tokenProvenance?: string;
+  latencyProvenance?: string;
+  costProvenance?: string;
+  turns?: number;
+  sessionFingerprint?: string;
 }
 
 export interface TelemetrySummary {
@@ -39,6 +48,7 @@ export interface TelemetrySummary {
   measuredInputTokens: number;
   measuredOutputTokens: number;
   measuredCostUsd: number;
+  providerEstimatedCostUsd: number;
 }
 
 function fingerprint(value: string): string {
@@ -149,9 +159,18 @@ export class TelemetryRecorder {
         cacheReadTokens: input.cacheReadTokens ?? null,
         cacheWriteTokens: input.cacheWriteTokens ?? null,
         latencyMs: input.latencyMs ?? null,
+        apiLatencyMs: input.apiLatencyMs ?? null,
         costUsd: input.costUsd ?? null,
+        estimatedCostUsd: input.estimatedCostUsd ?? null,
         success: input.success ?? null,
         qualityScore: input.qualityScore ?? null,
+        provider: input.provider ?? null,
+        measurementSource: input.measurementSource ?? null,
+        tokenProvenance: input.tokenProvenance ?? null,
+        latencyProvenance: input.latencyProvenance ?? null,
+        costProvenance: input.costProvenance ?? null,
+        turns: input.turns ?? null,
+        sessionFingerprint: input.sessionFingerprint ?? null,
       }),
     );
   }
@@ -168,6 +187,7 @@ export function summarizeTelemetry(
   let measuredInputTokens = 0;
   let measuredOutputTokens = 0;
   let measuredCostUsd = 0;
+  let providerEstimatedCostUsd = 0;
 
   for (const event of events) {
     const runId =
@@ -201,6 +221,9 @@ export function summarizeTelemetry(
       if (typeof event.payload.costUsd === 'number') {
         measuredCostUsd += event.payload.costUsd;
       }
+      if (typeof event.payload.estimatedCostUsd === 'number') {
+        providerEstimatedCostUsd += event.payload.estimatedCostUsd;
+      }
     }
   }
 
@@ -214,5 +237,6 @@ export function summarizeTelemetry(
     measuredInputTokens,
     measuredOutputTokens,
     measuredCostUsd,
+    providerEstimatedCostUsd,
   };
 }
