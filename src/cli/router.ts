@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { runAdaptiveCli } from './adaptive.js';
+import { runAdaptiveRouteCli } from './adaptive-route.js';
 import { runBridgeCli } from './bridges.js';
 import { runBenchmarkCorpusCli } from './corpus.js';
 import { runCalibrationCli } from './calibration.js';
@@ -69,6 +70,15 @@ async function runDashboard(
 
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
+
+  if (
+    (command === 'route' || command === 'plan') &&
+    args.includes('--adaptive-profile')
+  ) {
+    const exitCode = await runAdaptiveRouteCli(command, args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
 
   if (command === 'adaptive') {
     const exitCode = await runAdaptiveCli(args);
