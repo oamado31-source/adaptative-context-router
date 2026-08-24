@@ -29,10 +29,6 @@ function nullableNumber(value: number | null): string {
   return value === null ? '—' : formatInteger(value);
 }
 
-function nullableMoney(value: number | null): string {
-  return value === null ? '—' : `$${value.toFixed(4)}`;
-}
-
 function nullableScore(value: number | null): string {
   return value === null ? '—' : value.toFixed(3);
 }
