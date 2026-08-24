@@ -20,14 +20,14 @@ async function readPackageMetadata(): Promise<PackageMetadata> {
   return JSON.parse(raw) as PackageMetadata;
 }
 
-describe('v0.1.0 release contract', () => {
+describe('v0.2.0 release contract', () => {
   it('keeps runtime and package versions synchronized', async () => {
     const packageMetadata = await readPackageMetadata();
 
-    expect(packageMetadata.version).toBe('0.1.0');
+    expect(packageMetadata.version).toBe('0.2.0');
     expect(ACR_VERSION).toBe(packageMetadata.version);
-    expect(ACR_MILESTONE).toBe('M8');
-    expect(createBootstrapStatus().status).toBe('mvp-ready');
+    expect(ACR_MILESTONE).toBe('M13');
+    expect(createBootstrapStatus().status).toBe('adaptive-ready');
   });
 
   it('keeps the supported CLI entrypoint and release metadata stable', async () => {
