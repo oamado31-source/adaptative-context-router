@@ -20,6 +20,14 @@ function measured(
   };
 }
 
+function withoutCost(
+  observation: BenchmarkInput['baseline'][number],
+): BenchmarkInput['baseline'][number] {
+  const copy = { ...observation };
+  delete copy.costUsd;
+  return copy;
+}
+
 function fixture(): BenchmarkInput {
   return {
     case: {
@@ -60,7 +68,7 @@ describe('compareBenchmark', () => {
     const input = fixture();
     const result = compareBenchmark({
       ...input,
-      acr: [measured('acr', { costUsd: undefined })],
+      acr: [withoutCost(measured('acr'))],
     });
 
     expect(result.deltas.costReductionRatio).toBeUndefined();
