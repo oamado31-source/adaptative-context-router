@@ -153,14 +153,12 @@ function serenaOptions(
   parsed: ParsedArgs,
   deps: BridgeCliDependencies,
 ): SerenaMcpBridgeOptions {
+  const command = parsed.values.get('--serena-command');
+  const commandPrefixArgs = parsed.repeated.get('--serena-prefix-arg');
   return {
     projectPath: parsed.values.get('--project') ?? deps.cwd(),
-    ...(parsed.values.get('--serena-command')
-      ? { command: parsed.values.get('--serena-command') }
-      : {}),
-    ...(parsed.repeated.get('--serena-prefix-arg')
-      ? { commandPrefixArgs: parsed.repeated.get('--serena-prefix-arg') }
-      : {}),
+    ...(command ? { command } : {}),
+    ...(commandPrefixArgs ? { commandPrefixArgs } : {}),
   };
 }
 
@@ -252,11 +250,10 @@ async function runSerena(
   if (operation === 'find-symbol') {
     const depth = parseInteger(parsed, '--depth', 0);
     const maxMatches = parseInteger(parsed, '--max-matches', -1);
+    const relativePath = parsed.values.get('--relative-path');
     const result = await bridge.findSymbol({
       namePathPattern: requireValue(parsed, '--symbol'),
-      ...(parsed.values.get('--relative-path')
-        ? { relativePath: parsed.values.get('--relative-path') }
-        : {}),
+      ...(relativePath ? { relativePath } : {}),
       includeBody: parsed.flags.has('--include-body'),
       includeInfo: parsed.flags.has('--include-info'),
       substringMatching: parsed.flags.has('--substring'),
