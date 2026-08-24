@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "weights": {
+    "saving": 100,
+    "risk": {
+      "low": 2,
+      "medium": 10,
+      "high": 25,
+      "critical": 100
+    },
+    "overhead": 20,
+    "confidence": 10
+  },
+  "noOptimization": {
+    "simpleTaskMaxContextUtilization": 0.25,
+    "generalReasoningMaxContextUtilization": 0.35,
+    "minimumUtilityScore": 20
+  },
+  "strategies": [
+    {
+      "id": "serena",
+      "adapters": ["serena"],
+      "taskTypes": ["targeted_code_search", "repository_exploration"],
+      "requiredCapabilities": ["serena"],
+      "forbiddenPrecisions": ["secret-sensitive"],
+      "estimatedSavingRatio": 0.62,
+      "risk": "low",
+      "overheadScore": 0.15,
+      "baseScore": 8,
+      "confidence": 0.92,
+      "reasons": ["Symbol-aware retrieval avoids broad repository reads."]
+    },
+    {
+      "id": "jcodemunch",
+      "adapters": ["jcodemunch"],
+      "taskTypes": ["targeted_code_search", "repository_exploration"],
+      "requiredCapabilities": ["jcodemunch"],
+      "forbiddenPrecisions": ["secret-sensitive"],
+      "estimatedSavingRatio": 0.58,
+      "risk": "low",
+      "overheadScore": 0.18,
+      "baseScore": 7,
+      "confidence": 0.88,
+      "reasons": ["AST/symbol retrieval can replace broad file loading."]
+    },
+    {
+      "id": "rtk",
+      "adapters": ["rtk"],
+      "taskTypes": ["large_logs"],
+      "requiredCapabilities": ["rtk"],
+      "forbiddenPrecisions": ["secret-sensitive"],
+      "estimatedSavingRatio": 0.55,
+      "risk": "low",
+      "overheadScore": 0.10,
+      "baseScore": 9,
+      "confidence": 0.93,
+      "reasons": ["Large terminal output is a strong fit for deterministic output filtering."]
+    },
+    {
+      "id": "context-mode",
+      "adapters": ["context-mode"],
+      "taskTypes": ["large_logs", "large_structured_data"],
+      "requiredCapabilities": ["context-mode"],
+      "forbiddenPrecisions": ["exact", "secret-sensitive"],
+      "estimatedSavingRatio": 0.52,
+      "risk": "medium",
+      "overheadScore": 0.20,
+      "baseScore": 7,
+      "confidence": 0.86,
+      "reasons": ["Sandboxed search can keep bulky tool payloads outside model context."]
+    },
+    {
+      "id": "token-optimizer",
+      "adapters": ["token-optimizer"],
+      "taskTypes": ["large_logs", "large_structured_data", "implementation", "debugging"],
+      "requiredCapabilities": ["token-optimizer"],
+      "forbiddenPrecisions": ["secret-sensitive"],
+      "estimatedSavingRatio": 0.40,
+      "risk": "medium",
+      "overheadScore": 0.24,
+      "baseScore": 5,
+      "confidence": 0.82,
+      "reasons": ["Smart reads, diffs and output controls can reduce repeated context expansion."]
+    },
+    {
+      "id": "pxpipe",
+      "adapters": ["pxpipe"],
+      "taskTypes": ["semantic_long_context"],
+      "requiredCapabilities": ["pxpipe"],
+      "forbiddenPrecisions": ["structural", "exact", "secret-sensitive"],
+      "minContextUtilization": 0.45,
+      "estimatedSavingRatio": 0.65,
+      "risk": "medium",
+      "overheadScore": 0.35,
+      "baseScore": 7,
+      "confidence": 0.78,
+      "reasons": ["Optical compression is considered only for large semantic context with low exactness requirements."]
+    },
+    {
+      "id": "native-progressive-disclosure",
+      "adapters": ["native-claude"],
+      "taskTypes": ["targeted_code_search", "repository_exploration", "semantic_long_context", "implementation", "debugging"],
+      "requiredCapabilities": [],
+      "forbiddenPrecisions": ["secret-sensitive"],
+      "estimatedSavingRatio": 0.25,
+      "risk": "low",
+      "overheadScore": 0.08,
+      "baseScore": 3,
+      "confidence": 0.90,
+      "reasons": ["Native progressive disclosure is a low-overhead fallback when specialized adapters are unavailable."]
+    }
+  ]
+}
