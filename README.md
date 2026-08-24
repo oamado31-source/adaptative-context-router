@@ -68,7 +68,7 @@ Requirements:
 ```bash
 git clone https://github.com/oamado31-source/adaptative-context-router.git
 cd adaptative-context-router
-npm install
+npm install --no-package-lock
 npm run build
 node dist/cli/router.js help
 ```
