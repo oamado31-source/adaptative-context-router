@@ -60,6 +60,15 @@ describe('classifyTask', () => {
     expect(result.profile.expectedOutputSize).toBe('small');
   });
 
+  it('classifies natural UI color edit phrasing as a simple operation', () => {
+    const result = classifyTask('Change the button color.');
+
+    expect(result.profile.taskType).toBe('simple_operation');
+    expect(result.profile.precision).toBe('semantic');
+    expect(result.profile.risk).toBe('low');
+    expect(result.profile.expectedOutputSize).toBe('small');
+  });
+
   it('classifies implementation work', () => {
     const result = classifyTask('Implement a new endpoint for routing telemetry events.');
 
