@@ -42,6 +42,27 @@ function syntheticClaudeResult(): Record<string, unknown> {
   };
 }
 
+async function seedTelemetryRun(
+  telemetryPath: string,
+  runId: string,
+): Promise<JsonlTelemetryStore> {
+  const store = new JsonlTelemetryStore(telemetryPath);
+  await store.append({
+    id: 'synthetic-classification-event',
+    timestamp: '2026-08-24T00:00:00.000Z',
+    type: 'classification',
+    source: 'acr',
+    measured: false,
+    payload: {
+      runId,
+      taskFingerprint: '0'.repeat(64),
+      taskChars: 20,
+      taskType: 'targeted_code_search',
+    },
+  });
+  return store;
+}
+
 describe('Claude Code provider measurement', () => {
   it('parses provider-reported usage while labeling cost as a client estimate', () => {
     const measurement = parseClaudeCodeJson(syntheticClaudeResult());
@@ -102,17 +123,36 @@ describe('Claude Code provider measurement', () => {
     expect(() => parseClaudeCodeJsonText('{not-json')).toThrow(/not valid JSON/u);
   });
 
-  it('imports a Claude result into telemetry without promoting estimated cost to measured cost', async () => {
+  it('rejects an orphan provider measurement with no matching ACR run', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'acr-provider-orphan-'));
+    tempDirs.push(directory);
+    const inputPath = join(directory, 'claude-result.json');
+    const telemetryPath = join(directory, 'events.jsonl');
+    await writeFile(inputPath, JSON.stringify(syntheticClaudeResult()), 'utf8');
+
+    await expect(
+      importClaudeMeasurement({
+        file: inputPath,
+        runId: 'missing-run',
+        telemetryPath,
+        json: true,
+      }),
+    ).rejects.toThrow(/was not found/u);
+  });
+
+  it('imports a Claude result into an existing run without promoting estimated cost to measured cost', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'acr-provider-measurement-'));
     tempDirs.push(directory);
     const inputPath = join(directory, 'claude-result.json');
     const telemetryPath = join(directory, 'events.jsonl');
+    const runId = 'run-provider-measurement-test';
     const rawResult = JSON.stringify(syntheticClaudeResult());
     await writeFile(inputPath, rawResult, 'utf8');
+    const store = await seedTelemetryRun(telemetryPath, runId);
 
     const result = await importClaudeMeasurement({
       file: inputPath,
-      runId: 'run-provider-measurement-test',
+      runId,
       telemetryPath,
       json: true,
     });
@@ -120,10 +160,9 @@ describe('Claude Code provider measurement', () => {
     expect(result.estimatedCostUsd).toBe(0.042);
     expect(result.costProvenance).toBe('claude-code-client-estimate');
 
-    const store = new JsonlTelemetryStore(telemetryPath);
     const events = await store.list();
-    expect(events).toHaveLength(1);
-    const event = events[0];
+    expect(events).toHaveLength(2);
+    const event = events[1];
     expect(event?.type).toBe('measurement');
     expect(event?.measured).toBe(true);
     expect(event?.source).toBe('claude-code');
@@ -142,6 +181,8 @@ describe('Claude Code provider measurement', () => {
     );
 
     const summary = summarizeTelemetry(events);
+    expect(summary.totalRuns).toBe(1);
+    expect(summary.measuredRuns).toBe(1);
     expect(summary.measuredCostUsd).toBe(0);
     expect(summary.providerEstimatedCostUsd).toBeCloseTo(0.042);
   });
