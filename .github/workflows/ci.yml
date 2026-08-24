@@ -114,3 +114,23 @@ jobs:
           grep -q "quality-gate: PASS" /tmp/acr-benchmark.txt
           node dist/cli/index.js benchmark compare --json --file /tmp/acr-benchmark.json | tee /tmp/acr-benchmark-json.txt
           grep -q '"measured": true' /tmp/acr-benchmark-json.txt
+
+      - name: CLI dashboard smoke test
+        run: |
+          rm -f /tmp/acr-dashboard-demo.html /tmp/acr-dashboard-local.html
+          node dist/cli/router.js demo dashboard --output /tmp/acr-dashboard-demo.html | tee /tmp/acr-dashboard-demo.txt
+          test -s /tmp/acr-dashboard-demo.html
+          grep -q "SYNTHETIC DEMO" /tmp/acr-dashboard-demo.html
+          grep -q "synthetic-symbol-search" /tmp/acr-dashboard-demo.html
+          grep -q "NO_OPTIMIZATION" /tmp/acr-dashboard-demo.html
+          if grep -Eq 'https?://|<script[^>]+src=' /tmp/acr-dashboard-demo.html; then
+            echo "dashboard contains a remote dependency" >&2
+            exit 1
+          fi
+          node dist/cli/router.js dashboard build --benchmark /tmp/acr-benchmark.json --output /tmp/acr-dashboard-local.html | tee /tmp/acr-dashboard-local.txt
+          test -s /tmp/acr-dashboard-local.html
+          grep -q "Local ACR telemetry" /tmp/acr-dashboard-local.html
+          grep -q "ci-synthetic-symbol-search" /tmp/acr-dashboard-local.html
+          grep -q "Routing ≠ proof" /tmp/acr-dashboard-local.html
+          node dist/cli/router.js help | tee /tmp/acr-help.txt
+          grep -q "acr dashboard build" /tmp/acr-help.txt
