@@ -36,7 +36,7 @@ function isSupportedVersion(version: string): boolean {
   const parts = version.split('.').map((part) => Number.parseInt(part, 10));
   for (let index = 0; index < MIN_RTK_VERSION.length; index += 1) {
     const actual = parts[index] ?? 0;
-    const minimum = MIN_RTK_VERSION[index];
+    const minimum = MIN_RTK_VERSION[index] ?? 0;
     if (actual > minimum) return true;
     if (actual < minimum) return false;
   }
