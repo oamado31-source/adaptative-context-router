@@ -81,6 +81,51 @@ jobs:
           grep -q '"totalRuns": 1' /tmp/acr-telemetry-summary.txt
           grep -q '"serena": 1' /tmp/acr-telemetry-summary.txt
 
+      - name: CLI provider measurement smoke test
+        run: |
+          rm -rf .acr
+          node dist/cli/index.js plan --record --context-ratio 0.61 --available serena "Find where authenticateUser is defined." | tee /tmp/acr-provider-plan.txt
+          RUN_ID="$(awk '/telemetry-run:/ {print $2}' /tmp/acr-provider-plan.txt | tail -n 1)"
+          test -n "$RUN_ID"
+          cat > /tmp/acr-claude-result.json <<'JSON'
+          {
+            "type": "result",
+            "subtype": "success",
+            "is_error": false,
+            "duration_ms": 2480,
+            "duration_api_ms": 2110,
+            "num_turns": 3,
+            "result": "SYNTHETIC RESPONSE CONTENT THAT MUST NOT BE PERSISTED",
+            "session_id": "synthetic-session-secret-value",
+            "total_cost_usd": 0.042,
+            "usage": {
+              "input_tokens": 1200,
+              "output_tokens": 180,
+              "cache_read_input_tokens": 640,
+              "cache_creation_input_tokens": 90
+            }
+          }
+          JSON
+          node dist/cli/router.js measurement import-claude --file /tmp/acr-claude-result.json --run "$RUN_ID" --json | tee /tmp/acr-provider-import.txt
+          grep -q '"inputTokens": 1200' /tmp/acr-provider-import.txt
+          grep -q '"estimatedCostUsd": 0.042' /tmp/acr-provider-import.txt
+          grep -q '"costProvenance": "claude-code-client-estimate"' /tmp/acr-provider-import.txt
+          grep -q '"costUsd":null' .acr/telemetry/events.jsonl
+          grep -q '"estimatedCostUsd":0.042' .acr/telemetry/events.jsonl
+          if grep -Fq "synthetic-session-secret-value" .acr/telemetry/events.jsonl; then
+            echo "raw Claude session id leaked into telemetry" >&2
+            exit 1
+          fi
+          if grep -Fq "SYNTHETIC RESPONSE CONTENT THAT MUST NOT BE PERSISTED" .acr/telemetry/events.jsonl; then
+            echo "raw Claude response leaked into telemetry" >&2
+            exit 1
+          fi
+          node dist/cli/index.js telemetry summary --json | tee /tmp/acr-provider-summary.txt
+          grep -q '"measuredCostUsd": 0' /tmp/acr-provider-summary.txt
+          grep -q '"providerEstimatedCostUsd": 0.042' /tmp/acr-provider-summary.txt
+          node dist/cli/router.js measurement help | tee /tmp/acr-measurement-help.txt
+          grep -q "acr measurement import-claude" /tmp/acr-measurement-help.txt
+
       - name: CLI benchmark comparison smoke test
         run: |
           cat > /tmp/acr-benchmark.json <<'JSON'

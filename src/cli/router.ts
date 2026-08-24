@@ -6,6 +6,7 @@ import {
   parseDashboardArguments,
   printDashboardBuild,
 } from './dashboard.js';
+import { runMeasurementCli } from './measurement.js';
 
 function printHelp(): void {
   console.log(`ACR — Adaptative Context Router
@@ -19,6 +20,7 @@ Usage:
   acr bridge serena health [--project <path>] [--json]
   acr bridge serena find-symbol --symbol <name-path> [--project <path>] [--relative-path <path>] [--include-body] [--include-info] [--json]
   acr bridge serena overview --relative-path <path> [--project <path>] [--json]
+  acr measurement import-claude --file <result.json> --run <runId> [--telemetry <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
@@ -29,17 +31,18 @@ Usage:
   acr help
 
 Commands:
-  classify  Classify task type, precision requirement and optimization risk
-  route     Evaluate routing policy and select/reject optimization strategies
-  plan      Convert a routing decision into safe typed adapter execution plans
-  bridge    Explicitly invoke validated real execution bridges; never automatic from plan
-  benchmark Compare measured baseline vs ACR observations with a quality gate
-  telemetry Summarize local privacy-safe telemetry
-  dashboard Build a self-contained dashboard from local telemetry and measured benchmarks
-  demo      Generate explicitly labeled synthetic demonstration artifacts
-  doctor    Detect Claude Code and supported optimization capabilities
-  status    Show ACR bootstrap/runtime status
-  version   Print the ACR version`);
+  classify    Classify task type, precision requirement and optimization risk
+  route       Evaluate routing policy and select/reject optimization strategies
+  plan        Convert a routing decision into safe typed adapter execution plans
+  bridge      Explicitly invoke validated real execution bridges; never automatic from plan
+  measurement Import provider-reported usage from explicit structured result files
+  benchmark   Compare measured baseline vs ACR observations with a quality gate
+  telemetry   Summarize local privacy-safe telemetry
+  dashboard   Build a self-contained dashboard from local telemetry and measured benchmarks
+  demo        Generate explicitly labeled synthetic demonstration artifacts
+  doctor      Detect Claude Code and supported optimization capabilities
+  status      Show ACR bootstrap/runtime status
+  version     Print the ACR version`);
 }
 
 async function runDashboard(
@@ -60,6 +63,12 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (command === 'bridge') {
     const exitCode = await runBridgeCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'measurement') {
+    const exitCode = await runMeasurementCli(args);
     if (exitCode !== 0) process.exitCode = exitCode;
     return;
   }
