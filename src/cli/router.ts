@@ -2,6 +2,7 @@
 
 import { runBridgeCli } from './bridges.js';
 import { runBenchmarkCorpusCli } from './corpus.js';
+import { runCalibrationCli } from './calibration.js';
 import {
   buildDashboard,
   parseDashboardArguments,
@@ -24,6 +25,7 @@ Usage:
   acr measurement import-claude --file <result.json> --run <runId> [--telemetry <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
   acr benchmark corpus validate --file <corpus.json> [--json]
+  acr calibrate analyze --file <benchmark.json> [--file <benchmark.json> ...] [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
   acr demo dashboard [--output <html>] [--json]
@@ -39,6 +41,7 @@ Commands:
   bridge      Explicitly invoke validated real execution bridges; never automatic from plan
   measurement Import provider-reported usage from explicit structured result files
   benchmark   Compare measured observations or validate a real benchmark corpus
+  calibrate   Produce advisory policy calibration from measured benchmark evidence
   telemetry   Summarize local privacy-safe telemetry
   dashboard   Build a self-contained dashboard from local telemetry and measured benchmarks
   demo        Generate explicitly labeled synthetic demonstration artifacts
@@ -71,6 +74,12 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (command === 'measurement') {
     const exitCode = await runMeasurementCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'calibrate') {
+    const exitCode = await runCalibrationCli(args);
     if (exitCode !== 0) process.exitCode = exitCode;
     return;
   }
