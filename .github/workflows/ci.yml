@@ -70,3 +70,47 @@ jobs:
           node dist/cli/index.js telemetry summary --json | tee /tmp/acr-telemetry-summary.txt
           grep -q '"totalRuns": 1' /tmp/acr-telemetry-summary.txt
           grep -q '"serena": 1' /tmp/acr-telemetry-summary.txt
+
+      - name: CLI benchmark comparison smoke test
+        run: |
+          cat > /tmp/acr-benchmark.json <<'JSON'
+          {
+            "case": {
+              "id": "ci-synthetic-symbol-search",
+              "taskType": "targeted_code_search",
+              "strategy": "serena",
+              "qualityTolerance": 0.02,
+              "notes": "Synthetic CI fixture only; not project evidence."
+            },
+            "baseline": [
+              {
+                "arm": "baseline",
+                "source": "measured",
+                "inputTokens": 10000,
+                "outputTokens": 1000,
+                "latencyMs": 4000,
+                "costUsd": 0.12,
+                "success": true,
+                "qualityScore": 0.96
+              }
+            ],
+            "acr": [
+              {
+                "arm": "acr",
+                "source": "measured",
+                "inputTokens": 6000,
+                "outputTokens": 1000,
+                "latencyMs": 3500,
+                "costUsd": 0.08,
+                "success": true,
+                "qualityScore": 0.95
+              }
+            ]
+          }
+          JSON
+          node dist/cli/index.js benchmark compare --file /tmp/acr-benchmark.json | tee /tmp/acr-benchmark.txt
+          grep -q "evidence: measured" /tmp/acr-benchmark.txt
+          grep -q "outcome: acr-better" /tmp/acr-benchmark.txt
+          grep -q "quality-gate: PASS" /tmp/acr-benchmark.txt
+          node dist/cli/index.js benchmark compare --json --file /tmp/acr-benchmark.json | tee /tmp/acr-benchmark-json.txt
+          grep -q '"measured": true' /tmp/acr-benchmark-json.txt
