@@ -37,7 +37,7 @@ export interface DashboardModel {
   benchmarks: readonly BenchmarkComparison[];
 }
 
-interface MutableRunSummary extends DashboardRunSummary {}
+type MutableRunSummary = DashboardRunSummary;
 
 function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
