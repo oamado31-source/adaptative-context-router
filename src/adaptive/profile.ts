@@ -12,6 +12,10 @@ import type {
   AdaptiveStrategyRule,
 } from './contracts.js';
 
+type RuntimeStrategyPolicy = StrategyPolicy & {
+  adaptiveBlockedReason?: string;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -226,7 +230,7 @@ function applyRuleToStrategy(
   strategy: StrategyPolicy,
   rule: AdaptiveStrategyRule,
   profileId: string,
-): StrategyPolicy {
+): RuntimeStrategyPolicy {
   if (rule.action === 'block') {
     return {
       ...strategy,
@@ -263,7 +267,7 @@ export function applyAdaptiveRoutingProfile(
 
   const tunedStrategies: string[] = [];
   const blockedStrategies: string[] = [];
-  const strategies = config.strategies.map((strategy) => {
+  const strategies: readonly StrategyPolicy[] = config.strategies.map((strategy) => {
     const rule = rules.get(strategy.id);
     if (!rule) return strategy;
     if (rule.action === 'block') blockedStrategies.push(strategy.id);
