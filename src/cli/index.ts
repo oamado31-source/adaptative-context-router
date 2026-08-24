@@ -24,13 +24,18 @@ import {
   TelemetryRecorder,
 } from '../telemetry/recorder.js';
 import { JsonlTelemetryStore } from '../telemetry/store.js';
+import {
+  parseBenchmarkCliArguments,
+  printBenchmarkComparison,
+  runBenchmarkComparison,
+} from './benchmark.js';
 
 function defaultTelemetryPath(): string {
   return join(process.cwd(), '.acr', 'telemetry', 'events.jsonl');
 }
 
 function printHelp(): void {
-  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr telemetry summary [--json] [--path <file>]\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify  Classify task type, precision requirement and optimization risk\n  route     Evaluate routing policy and select/reject optimization strategies\n  plan      Convert a routing decision into safe typed adapter execution plans\n  telemetry Summarize local privacy-safe telemetry\n  doctor    Detect Claude Code and supported optimization capabilities\n  status    Show ACR bootstrap/runtime status\n  version   Print the ACR version`);
+  console.log(`ACR — Adaptative Context Router\n\nUsage:\n  acr classify [--json] <task>\n  acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>\n  acr benchmark compare --file <benchmark.json> [--json]\n  acr telemetry summary [--json] [--path <file>]\n  acr doctor [--json]\n  acr status [--json]\n  acr version\n  acr help\n\nCommands:\n  classify  Classify task type, precision requirement and optimization risk\n  route     Evaluate routing policy and select/reject optimization strategies\n  plan      Convert a routing decision into safe typed adapter execution plans\n  benchmark Compare measured baseline vs ACR observations with a quality gate\n  telemetry Summarize local privacy-safe telemetry\n  doctor    Detect Claude Code and supported optimization capabilities\n  status    Show ACR bootstrap/runtime status\n  version   Print the ACR version`);
 }
 
 function statusGlyph(capability: Capability): string {
@@ -438,6 +443,30 @@ async function main(argv: readonly string[]): Promise<void> {
         if (telemetryRunId) {
           console.log(`\ntelemetry-run: ${telemetryRunId}`);
         }
+      }
+      return;
+    }
+    case 'benchmark': {
+      const [subcommand = 'compare', ...benchmarkArgs] = args;
+      if (subcommand !== 'compare') {
+        throw new Error(
+          'Usage: acr benchmark compare --file <benchmark.json> [--json]',
+        );
+      }
+      const options = parseBenchmarkCliArguments(benchmarkArgs);
+      const comparison = await runBenchmarkComparison(options);
+
+      if (options.json) {
+        console.log(
+          JSON.stringify(
+            { file: options.path, comparison },
+            null,
+            2,
+          ),
+        );
+      } else {
+        printBenchmarkComparison(comparison);
+        console.log(`\nfile: ${options.path}`);
       }
       return;
     }
