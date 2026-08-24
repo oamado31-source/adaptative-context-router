@@ -6,7 +6,7 @@ import { JsonlTelemetryStore } from '../telemetry/store.js';
 
 const DEFAULT_TELEMETRY_PATH = '.acr/telemetry/events.jsonl';
 
-interface ImportClaudeOptions {
+export interface ImportClaudeOptions {
   file: string;
   runId: string;
   telemetryPath: string;
@@ -57,8 +57,17 @@ export async function importClaudeMeasurement(
   const raw = await readFile(options.file, 'utf8');
   const measurement = parseClaudeCodeJsonText(raw);
   const store = new JsonlTelemetryStore(options.telemetryPath);
-  const recorder = new TelemetryRecorder(store, 'claude-code');
+  const existingEvents = await store.list();
+  const runExists = existingEvents.some(
+    (event) => event.payload.runId === options.runId && event.type !== 'measurement',
+  );
+  if (!runExists) {
+    throw new Error(
+      `Telemetry run ${options.runId} was not found in ${options.telemetryPath}. Record the ACR run before importing provider measurements.`,
+    );
+  }
 
+  const recorder = new TelemetryRecorder(store, 'claude-code');
   await recorder.recordMeasurement({
     runId: options.runId,
     inputTokens: measurement.inputTokens,
