@@ -48,7 +48,7 @@ const DEBUGGING_PATTERN =
   /\b(?:debug|bug|error|exception|failing|failure|stack trace|why .{0,40} fail|fix .{0,40} error|broken)\b/iu;
 
 const SIMPLE_OPERATION_PATTERN =
-  /\b(?:rename|change (?:the )?color|fix (?:the )?typo|update (?:the )?text|small edit|one-line change|single-line change)\b/iu;
+  /\b(?:rename|change (?:the )?(?:(?:button|text|background|border|icon|link|header|footer|element|component) )?color|fix (?:the )?typo|update (?:the )?text|small edit|one-line change|single-line change)\b/iu;
 
 const IMPLEMENTATION_PATTERN =
   /\b(?:implement|add (?:a |the )?(?:feature|function|method|endpoint|component)|create (?:a |the )?(?:function|class|component|endpoint|module)|build (?:a |the )?(?:feature|component|endpoint|module)|refactor|modify|write (?:a |the )?(?:function|class|component|module))\b/iu;
