@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { runBridgeCli } from './bridges.js';
 import {
   buildDashboard,
   parseDashboardArguments,
@@ -13,6 +14,11 @@ Usage:
   acr classify [--json] <task>
   acr route [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>
   acr plan [--json] [--record] [--context-ratio <0..1>] [--available <ids>] [--mode <observe|guarded|auto>] <task>
+  acr bridge rtk health [--json]
+  acr bridge rtk rewrite --command <shell-command> [--json]
+  acr bridge serena health [--project <path>] [--json]
+  acr bridge serena find-symbol --symbol <name-path> [--project <path>] [--relative-path <path>] [--include-body] [--include-info] [--json]
+  acr bridge serena overview --relative-path <path> [--project <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
@@ -26,6 +32,7 @@ Commands:
   classify  Classify task type, precision requirement and optimization risk
   route     Evaluate routing policy and select/reject optimization strategies
   plan      Convert a routing decision into safe typed adapter execution plans
+  bridge    Explicitly invoke validated real execution bridges; never automatic from plan
   benchmark Compare measured baseline vs ACR observations with a quality gate
   telemetry Summarize local privacy-safe telemetry
   dashboard Build a self-contained dashboard from local telemetry and measured benchmarks
@@ -50,6 +57,12 @@ async function runDashboard(
 
 async function main(argv: readonly string[]): Promise<void> {
   const [command = 'help', ...args] = argv;
+
+  if (command === 'bridge') {
+    const exitCode = await runBridgeCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
 
   if (command === 'dashboard') {
     const [subcommand = 'build', ...dashboardArgs] = args;
