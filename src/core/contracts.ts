@@ -60,6 +60,7 @@ export interface StrategyCandidate {
   risk: RiskLevel;
   overheadScore: number;
   confidence: number;
+  utilityScore?: number;
   blocked: boolean;
   reasons: readonly string[];
 }
