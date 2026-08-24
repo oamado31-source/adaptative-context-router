@@ -225,7 +225,7 @@ describe('Serena real MCP bridge', () => {
       args: [
         'start-mcp-server',
         '--context',
-        'ide-assistant',
+        'claude-code',
         '--project',
         '/repo',
         '--enable-web-dashboard',
