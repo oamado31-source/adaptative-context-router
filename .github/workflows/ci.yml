@@ -144,3 +144,10 @@ jobs:
           grep -q "Routing ≠ proof" /tmp/acr-dashboard-local.html
           node dist/cli/router.js help | tee /tmp/acr-help.txt
           grep -q "acr dashboard build" /tmp/acr-help.txt
+
+      - name: CLI execution bridge smoke test
+        run: |
+          node dist/cli/router.js bridge help | tee /tmp/acr-bridge-help.txt
+          grep -q "acr bridge rtk rewrite" /tmp/acr-bridge-help.txt
+          grep -q "acr bridge serena find-symbol" /tmp/acr-bridge-help.txt
+          grep -q "ACR does not execute the rewritten shell command" /tmp/acr-bridge-help.txt
