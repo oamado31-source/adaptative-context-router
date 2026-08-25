@@ -42,6 +42,7 @@ async function writeCorpus(path: string): Promise<void> {
             task: 'Find the target symbol.',
             requiredCapabilities: ['serena'],
             expectedStrategy: 'serena',
+            routingContextRatio: 0.5,
             targetPaths: ['src/example.ts'],
             quality: {
               minimumScore: 0.95,
