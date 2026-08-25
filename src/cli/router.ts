@@ -3,6 +3,7 @@
 import { runAdaptiveCli } from './adaptive.js';
 import { runAdaptiveRouteCli } from './adaptive-route.js';
 import { runBridgeCli } from './bridges.js';
+import { runBenchmarkCampaignCli } from './campaign.js';
 import { runBenchmarkCorpusCli } from './corpus.js';
 import { runCalibrationCli } from './calibration.js';
 import {
@@ -29,6 +30,9 @@ Usage:
   acr measurement import-claude --file <result.json> --run <runId> [--telemetry <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
   acr benchmark corpus validate --file <corpus.json> [--json]
+  acr benchmark campaign prepare --corpus <corpus.json> --model <model> --output <campaign.json> [--available <ids>] [--json]
+  acr benchmark campaign record --campaign <campaign.json> --run <runId> --provider-result <result.json> --quality-score <0..1> --evidence <evidence.json> [--json]
+  acr benchmark campaign assemble --campaign <campaign.json> --evidence <evidence.json> --case <caseId> --output <benchmark.json> [--json]
   acr calibrate analyze --file <benchmark.json> [--file <benchmark.json> ...] [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
@@ -45,7 +49,7 @@ Commands:
   adaptive    Create/inspect explicitly approved measured-evidence routing profiles
   bridge      Explicitly invoke validated real execution bridges; never automatic from plan
   measurement Import provider-reported usage from explicit structured result files
-  benchmark   Compare measured observations or validate a real benchmark corpus
+  benchmark   Compare measured evidence, validate the real corpus, or manage real A/B campaigns
   calibrate   Produce advisory policy calibration from measured benchmark evidence
   telemetry   Summarize local privacy-safe telemetry
   dashboard   Build a self-contained dashboard from local telemetry and measured benchmarks
@@ -100,6 +104,12 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (command === 'calibrate') {
     const exitCode = await runCalibrationCli(args);
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'benchmark' && args[0] === 'campaign') {
+    const exitCode = await runBenchmarkCampaignCli(args.slice(1));
     if (exitCode !== 0) process.exitCode = exitCode;
     return;
   }

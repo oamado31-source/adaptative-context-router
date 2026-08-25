@@ -23,6 +23,18 @@ export interface SerenaFindSymbolOptions {
   depth?: number;
   substringMatching?: boolean;
   maxMatches?: number;
+  maxAnswerChars?: number;
+}
+
+export interface SerenaSearchForPatternOptions {
+  substringPattern: string;
+  relativePath?: string;
+  contextLinesBefore?: number;
+  contextLinesAfter?: number;
+  pathsIncludeGlob?: string;
+  pathsExcludeGlob?: string;
+  restrictSearchToCodeFiles?: boolean;
+  maxAnswerChars?: number;
 }
 
 export interface SerenaSession {
@@ -174,8 +186,36 @@ export class SerenaMcpBridge implements AdapterExecutor {
         depth: options.depth ?? 0,
         substring_matching: options.substringMatching ?? false,
         max_matches: options.maxMatches ?? -1,
+        ...(options.maxAnswerChars === undefined
+          ? {}
+          : { max_answer_chars: options.maxAnswerChars }),
       },
     );
+  }
+
+  async searchForPattern(
+    options: SerenaSearchForPatternOptions,
+  ): Promise<SerenaToolResult> {
+    if (!options.substringPattern.trim()) {
+      throw new Error('Serena search_for_pattern requires a non-empty pattern.');
+    }
+
+    return this.#withTool('search_for_pattern', {
+      substring_pattern: options.substringPattern,
+      relative_path: options.relativePath ?? '',
+      context_lines_before: options.contextLinesBefore ?? 2,
+      context_lines_after: options.contextLinesAfter ?? 2,
+      ...(options.pathsIncludeGlob === undefined
+        ? {}
+        : { paths_include_glob: options.pathsIncludeGlob }),
+      ...(options.pathsExcludeGlob === undefined
+        ? {}
+        : { paths_exclude_glob: options.pathsExcludeGlob }),
+      restrict_search_to_code_files: options.restrictSearchToCodeFiles ?? true,
+      ...(options.maxAnswerChars === undefined
+        ? {}
+        : { max_answer_chars: options.maxAnswerChars }),
+    });
   }
 
   async getSymbolsOverview(
