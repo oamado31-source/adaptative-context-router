@@ -57,6 +57,16 @@ function parseCase(value: unknown): BenchmarkCase {
     value.qualityTolerance,
     'benchmark.case.qualityTolerance',
   );
+  const minimumQualityScore = optionalNumber(
+    value.minimumQualityScore,
+    'benchmark.case.minimumQualityScore',
+  );
+  if (
+    minimumQualityScore !== undefined &&
+    (minimumQualityScore < 0 || minimumQualityScore > 1)
+  ) {
+    throw new Error('benchmark.case.minimumQualityScore must be between 0 and 1.');
+  }
   const notes = optionalString(value.notes, 'benchmark.case.notes');
 
   return {
@@ -65,6 +75,7 @@ function parseCase(value: unknown): BenchmarkCase {
     ...(strategy !== undefined ? { strategy } : {}),
     ...(taskFingerprint !== undefined ? { taskFingerprint } : {}),
     ...(qualityTolerance !== undefined ? { qualityTolerance } : {}),
+    ...(minimumQualityScore !== undefined ? { minimumQualityScore } : {}),
     ...(notes !== undefined ? { notes } : {}),
   };
 }
