@@ -146,7 +146,7 @@ jobs:
             echo "M14 accepted a record without blinded review confirmation" >&2
             exit 1
           fi
-          grep -qi "--review-blinded" /tmp/acr-m14-blind-rejection.txt
+          grep -qi -- "--review-blinded" /tmp/acr-m14-blind-rejection.txt
 
           SLOTS=(
             "ci-m14-case:r1:baseline"
