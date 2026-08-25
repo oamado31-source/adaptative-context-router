@@ -10,6 +10,7 @@ import {
   parseDashboardArguments,
   printDashboardBuild,
 } from './dashboard.js';
+import { runBenchmarkExperimentCli } from './experiment.js';
 import { runMeasurementCli } from './measurement.js';
 
 function printHelp(): void {
@@ -29,6 +30,10 @@ Usage:
   acr measurement import-claude --file <result.json> --run <runId> [--telemetry <path>] [--json]
   acr benchmark compare --file <benchmark.json> [--json]
   acr benchmark corpus validate --file <corpus.json> [--json]
+  acr benchmark experiment prepare --corpus <corpus.json> --case <caseId> --model <model> --output <experiment.json> [--json]
+  acr benchmark experiment inspect --file <experiment.json> [--json]
+  acr benchmark experiment record --file <experiment.json> --slot <slotId> --result <claude-result.json> --quality-score <0..1> --review-blinded --output <experiment.json> [--json]
+  acr benchmark experiment finalize --file <experiment.json> --output <benchmark.json> [--json]
   acr calibrate analyze --file <benchmark.json> [--file <benchmark.json> ...] [--json]
   acr telemetry summary [--json] [--path <file>]
   acr dashboard build [--telemetry <file>] [--benchmark <file>] [--output <html>] [--json]
@@ -45,7 +50,7 @@ Commands:
   adaptive    Create/inspect explicitly approved measured-evidence routing profiles
   bridge      Explicitly invoke validated real execution bridges; never automatic from plan
   measurement Import provider-reported usage from explicit structured result files
-  benchmark   Compare measured observations or validate a real benchmark corpus
+  benchmark   Compare measured observations, validate a real corpus, or manage operator-run A/B experiments
   calibrate   Produce advisory policy calibration from measured benchmark evidence
   telemetry   Summarize local privacy-safe telemetry
   dashboard   Build a self-contained dashboard from local telemetry and measured benchmarks
@@ -106,6 +111,12 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (command === 'benchmark' && args[0] === 'corpus') {
     const exitCode = await runBenchmarkCorpusCli(args.slice(1));
+    if (exitCode !== 0) process.exitCode = exitCode;
+    return;
+  }
+
+  if (command === 'benchmark' && args[0] === 'experiment') {
+    const exitCode = await runBenchmarkExperimentCli(args.slice(1));
     if (exitCode !== 0) process.exitCode = exitCode;
     return;
   }
