@@ -83,6 +83,7 @@ jobs:
             ]
           }
           JSON
+          grep -q "SYNTHETIC M14 CI MECHANISM FIXTURE ONLY" /tmp/acr-m14-corpus.json
 
           node dist/cli/router.js benchmark experiment prepare \
             --corpus /tmp/acr-m14-corpus.json \
@@ -217,7 +218,8 @@ jobs:
           grep -q '"acrSamples": 3' /tmp/acr-m14-finalize.txt
           grep -q '"minimumQualityScore": 0.95' /tmp/acr-m14-finalize.txt
           grep -q '"costIncluded": false' /tmp/acr-m14-finalize.txt
-          grep -q "SYNTHETIC M14 CI MECHANISM FIXTURE ONLY" /tmp/acr-m14-benchmark.json
+          grep -q "corpus ci-m14-mechanism-v1" /tmp/acr-m14-benchmark.json
+          grep -q "model ci-operator-pinned-model (operator-pinned)" /tmp/acr-m14-benchmark.json
 
           if grep -Fq "SYNTHETIC M14 CI RAW RESULT" /tmp/acr-m14-benchmark.json; then
             echo "raw Claude result content leaked into finalized benchmark" >&2
