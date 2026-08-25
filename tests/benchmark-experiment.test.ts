@@ -35,6 +35,7 @@ function corpus(expectedStrategy = 'serena', minimumScore = 0.95) {
         task: 'Find the target symbol and report its file.',
         requiredCapabilities: expectedStrategy === 'serena' ? ['serena'] : [],
         expectedStrategy,
+        routingContextRatio: 0.5,
         targetPaths: ['src/example.ts'],
         quality: {
           minimumScore,
