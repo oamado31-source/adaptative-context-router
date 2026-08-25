@@ -1,0 +1,235 @@
+name: Real A/B Experiment Smoke
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  experiment-orchestration:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Focused M14 tests
+        run: npm test -- --run tests/benchmark-experiment.test.ts tests/benchmark-experiment-cli.test.ts
+
+      - name: Compiled M14 experiment orchestration smoke
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/acr-m14-corpus.json <<'JSON'
+          {
+            "schemaVersion": 1,
+            "id": "ci-m14-mechanism-v1",
+            "evidenceMode": "real",
+            "provider": "claude-code",
+            "target": {
+              "repository": "owner/repo",
+              "revision": "0123456789abcdef0123456789abcdef01234567"
+            },
+            "controls": {
+              "repetitionsPerArm": 3,
+              "samePrompt": true,
+              "sameProviderModel": true,
+              "sessionPersistence": false,
+              "order": "alternating",
+              "qualityEvaluation": "blinded-rubric"
+            },
+            "cases": [
+              {
+                "id": "ci-m14-case",
+                "title": "Synthetic M14 orchestration mechanism fixture",
+                "taskType": "targeted_code_search",
+                "task": "Find the target symbol and report its defining file.",
+                "routingContextRatio": 0.5,
+                "targetPaths": ["src/example.ts"],
+                "requiredCapabilities": ["serena"],
+                "expectedStrategy": "serena",
+                "quality": {
+                  "minimumScore": 0.95,
+                  "assertions": [
+                    "Names the correct file.",
+                    "Does not invent another symbol."
+                  ]
+                },
+                "notes": "SYNTHETIC M14 CI MECHANISM FIXTURE ONLY — NOT REAL SAVINGS EVIDENCE"
+              }
+            ]
+          }
+          JSON
+          grep -q "SYNTHETIC M14 CI MECHANISM FIXTURE ONLY" /tmp/acr-m14-corpus.json
+
+          node dist/cli/router.js benchmark experiment prepare \
+            --corpus /tmp/acr-m14-corpus.json \
+            --case ci-m14-case \
+            --model ci-operator-pinned-model \
+            --output /tmp/acr-m14-experiment.json \
+            --json | tee /tmp/acr-m14-prepare.txt
+
+          grep -q '"evidenceMode": "real"' /tmp/acr-m14-prepare.txt
+          grep -q '"execution": false' /tmp/acr-m14-prepare.txt
+          grep -q '"model": "ci-operator-pinned-model"' /tmp/acr-m14-prepare.txt
+          grep -q '"totalSlots": 6' /tmp/acr-m14-prepare.txt
+          grep -q '"pendingSlots": 6' /tmp/acr-m14-prepare.txt
+          grep -q '"id": "ci-m14-case:r1:baseline"' /tmp/acr-m14-prepare.txt
+
+          node dist/cli/router.js benchmark experiment inspect \
+            --file /tmp/acr-m14-experiment.json \
+            --json | tee /tmp/acr-m14-inspect.txt
+          grep -q '"recordedSlots": 0' /tmp/acr-m14-inspect.txt
+          grep -q '"pendingSlots": 6' /tmp/acr-m14-inspect.txt
+
+          cat > /tmp/acr-m14-preflight-result.json <<'JSON'
+          {
+            "type": "result",
+            "session_id": "synthetic-m14-ci-session-preflight",
+            "is_error": false,
+            "duration_ms": 1000,
+            "duration_api_ms": 800,
+            "total_cost_usd": 0.01,
+            "num_turns": 1,
+            "result": "SYNTHETIC M14 CI PREFLIGHT RAW RESULT — NOT EVIDENCE",
+            "usage": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "cache_read_input_tokens": 0,
+              "cache_creation_input_tokens": 0
+            }
+          }
+          JSON
+
+          if node dist/cli/router.js benchmark experiment record \
+            --file /tmp/acr-m14-experiment.json \
+            --slot ci-m14-case:r1:acr \
+            --result /tmp/acr-m14-preflight-result.json \
+            --quality-score 0.96 \
+            --review-blinded \
+            --output /tmp/acr-m14-experiment.json \
+            > /tmp/acr-m14-order-rejection.txt 2>&1; then
+            echo "M14 accepted an out-of-order experiment slot" >&2
+            exit 1
+          fi
+          grep -qi "order violation" /tmp/acr-m14-order-rejection.txt
+
+          if node dist/cli/router.js benchmark experiment record \
+            --file /tmp/acr-m14-experiment.json \
+            --slot ci-m14-case:r1:baseline \
+            --result /tmp/acr-m14-preflight-result.json \
+            --quality-score 0.96 \
+            --output /tmp/acr-m14-experiment.json \
+            > /tmp/acr-m14-blind-rejection.txt 2>&1; then
+            echo "M14 accepted a record without blinded review confirmation" >&2
+            exit 1
+          fi
+          grep -qi -- "--review-blinded" /tmp/acr-m14-blind-rejection.txt
+
+          SLOTS=(
+            "ci-m14-case:r1:baseline"
+            "ci-m14-case:r1:acr"
+            "ci-m14-case:r2:acr"
+            "ci-m14-case:r2:baseline"
+            "ci-m14-case:r3:baseline"
+            "ci-m14-case:r3:acr"
+          )
+
+          for index in "${!SLOTS[@]}"; do
+            sequence=$((index + 1))
+            result_file="/tmp/acr-m14-result-${sequence}.json"
+            cat > "$result_file" <<JSON
+          {
+            "type": "result",
+            "session_id": "synthetic-m14-ci-session-${sequence}",
+            "is_error": false,
+            "duration_ms": 1000,
+            "duration_api_ms": 800,
+            "total_cost_usd": 0.01,
+            "num_turns": 1,
+            "result": "SYNTHETIC M14 CI RAW RESULT ${sequence} — NOT EVIDENCE",
+            "usage": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "cache_read_input_tokens": 0,
+              "cache_creation_input_tokens": 0
+            }
+          }
+          JSON
+
+            node dist/cli/router.js benchmark experiment record \
+              --file /tmp/acr-m14-experiment.json \
+              --slot "${SLOTS[$index]}" \
+              --result "$result_file" \
+              --quality-score 0.96 \
+              --review-blinded \
+              --output /tmp/acr-m14-experiment.json \
+              --json > "/tmp/acr-m14-record-${sequence}.txt"
+          done
+
+          node dist/cli/router.js benchmark experiment inspect \
+            --file /tmp/acr-m14-experiment.json \
+            --json | tee /tmp/acr-m14-complete.txt
+          grep -q '"recordedSlots": 6' /tmp/acr-m14-complete.txt
+          grep -q '"pendingSlots": 0' /tmp/acr-m14-complete.txt
+
+          if grep -Fq "SYNTHETIC M14 CI RAW RESULT" /tmp/acr-m14-experiment.json; then
+            echo "raw Claude result content leaked into M14 ledger" >&2
+            exit 1
+          fi
+          if grep -Fq "synthetic-m14-ci-session-" /tmp/acr-m14-experiment.json; then
+            echo "raw Claude session id leaked into M14 ledger" >&2
+            exit 1
+          fi
+          grep -Eq '"sessionFingerprint": "[0-9a-f]{64}"' /tmp/acr-m14-experiment.json
+          grep -Eq '"resultFingerprint": "[0-9a-f]{64}"' /tmp/acr-m14-experiment.json
+
+          node dist/cli/router.js benchmark experiment finalize \
+            --file /tmp/acr-m14-experiment.json \
+            --output /tmp/acr-m14-benchmark.json \
+            --json | tee /tmp/acr-m14-finalize.txt
+
+          grep -q '"evidenceMode": "real"' /tmp/acr-m14-finalize.txt
+          grep -q '"execution": false' /tmp/acr-m14-finalize.txt
+          grep -q '"baselineSamples": 3' /tmp/acr-m14-finalize.txt
+          grep -q '"acrSamples": 3' /tmp/acr-m14-finalize.txt
+          grep -q '"minimumQualityScore": 0.95' /tmp/acr-m14-finalize.txt
+          grep -q '"costIncluded": false' /tmp/acr-m14-finalize.txt
+          grep -q "corpus ci-m14-mechanism-v1" /tmp/acr-m14-benchmark.json
+          grep -q "model ci-operator-pinned-model (operator-pinned)" /tmp/acr-m14-benchmark.json
+
+          if grep -Fq "SYNTHETIC M14 CI RAW RESULT" /tmp/acr-m14-benchmark.json; then
+            echo "raw Claude result content leaked into finalized benchmark" >&2
+            exit 1
+          fi
+          if grep -Fq "synthetic-m14-ci-session-" /tmp/acr-m14-benchmark.json; then
+            echo "raw Claude session id leaked into finalized benchmark" >&2
+            exit 1
+          fi
+
+          node dist/cli/router.js benchmark experiment help | tee /tmp/acr-m14-help.txt
+          grep -q "never executes Claude Code or external adapters" /tmp/acr-m14-help.txt
+          grep -q "client estimate" /tmp/acr-m14-help.txt

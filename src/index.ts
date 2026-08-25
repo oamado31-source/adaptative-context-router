@@ -4,6 +4,7 @@ export * from './adaptive/contracts.js';
 export * from './adaptive/profile.js';
 export * from './benchmark/contracts.js';
 export * from './benchmark/corpus.js';
+export * from './benchmark/experiment.js';
 export * from './benchmark/harness.js';
 export * from './benchmark/io.js';
 export * from './calibration/analyzer.js';

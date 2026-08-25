@@ -94,14 +94,30 @@ export function compareBenchmark(input: BenchmarkInput): BenchmarkComparison {
   const baseline = aggregate(input.baseline, 'baseline');
   const acr = aggregate(input.acr, 'acr');
   const tolerance = input.case.qualityTolerance ?? DEFAULT_QUALITY_TOLERANCE;
+  const absoluteMinimum = input.case.minimumQualityScore;
 
   if (!Number.isFinite(tolerance) || tolerance < 0 || tolerance > 1) {
     throw new Error('qualityTolerance must be between 0 and 1.');
+  }
+  if (
+    absoluteMinimum !== undefined &&
+    (!Number.isFinite(absoluteMinimum) || absoluteMinimum < 0 || absoluteMinimum > 1)
+  ) {
+    throw new Error('minimumQualityScore must be between 0 and 1.');
+  }
+  if (
+    absoluteMinimum !== undefined &&
+    baseline.meanQualityScore < absoluteMinimum
+  ) {
+    throw new Error(
+      `Baseline mean quality ${baseline.meanQualityScore.toFixed(3)} is below the required corpus minimum ${absoluteMinimum.toFixed(3)}; this case cannot produce valid comparative evidence.`,
+    );
   }
 
   const minimumAcceptedQuality = Math.max(
     0,
     baseline.meanQualityScore - tolerance,
+    absoluteMinimum ?? 0,
   );
   const qualityPassed =
     acr.meanQualityScore >= minimumAcceptedQuality &&
@@ -158,6 +174,12 @@ export function compareBenchmark(input: BenchmarkInput): BenchmarkComparison {
     );
   }
 
+  if (absoluteMinimum !== undefined) {
+    rationale.push(
+      `Absolute corpus quality floor ${absoluteMinimum.toFixed(3)} was enforced in addition to the relative quality tolerance.`,
+    );
+  }
+
   if (costReductionRatio === undefined) {
     rationale.push('Cost comparison omitted because complete measured cost data was not supplied for both arms.');
   } else {
@@ -174,6 +196,7 @@ export function compareBenchmark(input: BenchmarkInput): BenchmarkComparison {
     qualityGate: {
       tolerance,
       minimumAcceptedQuality,
+      ...(absoluteMinimum === undefined ? {} : { absoluteMinimum }),
       passed: qualityPassed,
     },
     outcome,
