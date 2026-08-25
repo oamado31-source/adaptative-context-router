@@ -9,6 +9,7 @@ export interface BenchmarkCase {
   strategy?: string;
   taskFingerprint?: string;
   qualityTolerance?: number;
+  minimumQualityScore?: number;
   notes?: string;
 }
 
@@ -66,6 +67,7 @@ export interface BenchmarkComparison {
   deltas: BenchmarkDeltas;
   qualityGate: {
     tolerance: number;
+    absoluteMinimum?: number;
     minimumAcceptedQuality: number;
     passed: boolean;
   };
