@@ -32,12 +32,13 @@ async function writeCorpus(path: string): Promise<void> {
           samePrompt: true,
           sameProviderModel: true,
           sessionPersistence: false,
-          armOrder: 'alternating',
+          order: 'alternating',
           qualityEvaluation: 'blinded-rubric',
         },
         cases: [
           {
             id: 'cli-case',
+            title: 'Synthetic CLI fixture for targeted code search',
             taskType: 'targeted_code_search',
             task: 'Find the target symbol.',
             requiredCapabilities: ['serena'],
@@ -46,7 +47,10 @@ async function writeCorpus(path: string): Promise<void> {
             targetPaths: ['src/example.ts'],
             quality: {
               minimumScore: 0.95,
-              assertions: ['Names the correct file.'],
+              assertions: [
+                'Names the correct file.',
+                'Does not invent another symbol.',
+              ],
             },
           },
         ],
