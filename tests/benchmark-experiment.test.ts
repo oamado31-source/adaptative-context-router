@@ -25,12 +25,13 @@ function corpus(expectedStrategy = 'serena', minimumScore = 0.95) {
       samePrompt: true,
       sameProviderModel: true,
       sessionPersistence: false,
-      armOrder: 'alternating',
+      order: 'alternating',
       qualityEvaluation: 'blinded-rubric',
     },
     cases: [
       {
         id: 'case-one',
+        title: 'Synthetic experiment fixture for targeted code search',
         taskType: 'targeted_code_search',
         task: 'Find the target symbol and report its file.',
         requiredCapabilities: expectedStrategy === 'serena' ? ['serena'] : [],
